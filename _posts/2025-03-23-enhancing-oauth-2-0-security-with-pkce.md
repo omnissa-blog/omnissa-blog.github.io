@@ -1,9 +1,9 @@
 ---
 layout: post
 title:  "Enhancing OAuth 2.0 Security with PKCE: A Deep Dive into External Partner Integration"
-date:   2025-03-23
+date:   2025-05-26
 categories: security
-author: smarp
+author: samarp
 image: assets/images/oauth-pkce-flow.webp
 featured: true
 ---

@@ -13,12 +13,20 @@ permalink: /:title/
 
 # Authors
 authors:
-  smarp:
+  samarp:
     name: Samar Prakash
     display_name: Samar Prakash
-    avatar: 'assets/images/avatar/smarp-avatar.png'
+    avatar: 'assets/images/avatar/samarp-avatar.png'
     gravatar: e56154546cf4be74e393c62d1ae9f9d4
     email: samarp@omnissa.com
+
+  ashroti:
+    name: Aditya Shrotri
+    display_name: Aditya Shrotri
+    avatar: 'assets/images/avatar/ashroti-avatar.png'
+    gravatar: e56154546cf4be74e393c62d1ae9f9d4
+    email: ashrotri@omnissa.com
+
   john:
     name: John
     display_name: John    
