@@ -17,15 +17,25 @@ authors:
     name: Samar Prakash
     display_name: Samar Prakash
     avatar: 'assets/images/avatar/samarp-avatar.png'
-    gravatar: e56154546cf4be74e393c62d1ae9f9d4
     email: samarp@omnissa.com
 
   ashroti:
     name: Aditya Shrotri
     display_name: Aditya Shrotri
     avatar: 'assets/images/avatar/ashroti-avatar.png'
-    gravatar: e56154546cf4be74e393c62d1ae9f9d4
     email: ashrotri@omnissa.com
+
+  jbedient:
+    name: Jason Bedient
+    display_name: Jason Bedient
+    avatar: 'assets/images/avatar/jbedient-avatar.png'
+    email: jbedient@omnissa.com
+
+  parrellad:
+    name: Dan Parrella
+    display_name: Dan Parrella
+    avatar: 'assets/images/avatar/parrellad-avatar.png'
+    email: parrellad@omnissa.com
 
   john:
     name: John
