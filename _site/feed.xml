@@ -2,12 +2,304 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Engineering at Omnissa</title>
-    <description>Phasellus placerat aliquet blandit</description>
+    <description>Elevate the Digital Experience</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 26 Mar 2025 07:49:12 +0530</pubDate>
-    <lastBuildDate>Wed, 26 Mar 2025 07:49:12 +0530</lastBuildDate>
+    <pubDate>Sun, 01 Jun 2025 10:50:48 +0530</pubDate>
+    <lastBuildDate>Sun, 01 Jun 2025 10:50:48 +0530</lastBuildDate>
     <generator>Jekyll v4.4.1</generator>
+    
+      <item>
+        <title>Proactive Bug Hunting and Error Monitoring with Sentry</title>
+        <description>&lt;p&gt;We don’t live in a perfect world, and software is no exception to that. Testing can’t always catch everything or anticipate every potential failure with third-party dependencies or services. Code reviewers and the engineers who wrote the code are susceptible to fatigue and human error. It is simply a fact that bugs and other errors are going to happen at some point.&lt;/p&gt;
+
+&lt;p&gt;Acknowledging this truth requires that we have feedback mechanisms in place to let us know when unexpected errors occur, so that we can quickly investigate and resolve issues before they impact our customers. It’s even better (and much less expensive) when issues are detected before they can even reach our customers.&lt;/p&gt;
+
+&lt;p&gt;This article tells the story of how the VMware Workspace ONE Intelligence team came to use &lt;a href=&quot;https://sentry.io/welcome/&quot;&gt;Sentry&lt;/a&gt; to help us maintain a high standard of reliability and quality for our services.&lt;/p&gt;
+
+&lt;h2 id=&quot;background&quot;&gt;Background&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.omnissa.com/products/omnissa-intelligence/&quot;&gt;Omnissa Workspace ONE Intelligence&lt;/a&gt; is a SaaS-based data analytics platform comprised of 40+ container-based microservices and dozens of lambdas running on AWS. We have deployments in regions around the world and a highly distributed team. Our platform ingests a ton of data from a wide variety of sources — roughly 4 TB per day in our busiest deployment! All sorts of interesting problems can happen at this scale and we are regularly pushing the limits of AWS. As such it’s extremely important for us to have solid tools that help us be aware of and troubleshoot issues.&lt;/p&gt;
+
+&lt;h2 id=&quot;log-monitoring-with-sumologic&quot;&gt;Log Monitoring with SumoLogic&lt;/h2&gt;
+&lt;p&gt;Logs from our services and other components are sent to SumoLogic, which allows us to search and analyze log data. Some of the logs that make their way into &lt;a href=&quot;https://www.sumologic.com/&quot;&gt;SumoLogic&lt;/a&gt; are log statements added to our code (or that third-party libraries have added to theirs) to highlight potential error conditions. These logs generally have a WARN or ERROR level depending on the potential severity of the application state. We can then run queries for such logs to find errors. Further, those same queries can be executed to run on a schedule and trigger alerts when a log count threshold is reached.&lt;/p&gt;
+
+&lt;p&gt;This log-based approach was used by our team for what we will call “Log Review” and “Log Monitoring.”&lt;/p&gt;
+
+&lt;h3 id=&quot;log-review&quot;&gt;Log Review&lt;/h3&gt;
+
+&lt;p&gt;The purpose of Log Review was to find problems in staging before code is released to production. During each sprint an engineer was assigned to a Log Review rotation. This meant that the engineer needed to remember to run a handful of queries against logs in our staging environment at least once a day. Any issues found that required a fix or further investigation were created as bugs or tasks under a log review Epic in JIRA.&lt;/p&gt;
+
+&lt;p&gt;Log Review was problematic for a few reasons. Within a single sprint it was somewhat manageable for the assigned engineer to maintain context over which issues were new or previously triaged, but that context was easily lost when the next engineer came along. Some “tribal knowledge” was required in order to stay on top of things — which is not easy with a large and distributed team that continues to grow and develop microservices.&lt;/p&gt;
+
+&lt;p&gt;But perhaps the biggest problem was that it required a human remembering to go in to SumoLogic and manually run queries to hunt for issues while also staying on top of their other tasks. This meant that some issues were only detected whenever someone went to look for them, which could mean hours or days going by as more code is merged. Finding the needle in the hay stack representing the offending commit is much harder when the haystack keeps growing.&lt;/p&gt;
+
+&lt;h3 id=&quot;log-monitoring&quot;&gt;Log Monitoring&lt;/h3&gt;
+
+&lt;p&gt;Log monitoring was essentially an automated set of queries for WARN and ERROR logs that would trigger PagerDuty alerts when any results were found. The queries were run on an hourly basis. Filters were periodically added to these queries to avoid noise from known issues.&lt;/p&gt;
+
+&lt;p&gt;The team had some success with this approach. Because of the integration with PagerDuty, issues were generally quickly examined and triaged by the engineer on call. Filters were added if needed and the queries could be updated by our DevOps team to avoid continued noise.&lt;/p&gt;
+
+&lt;p&gt;This approach had some serious drawbacks, however. The biggest issue was that the queries spanned multiple services and components. When a PagerDuty incident was created, it was not scoped to a particular component or issue. This meant that new incidents would not be created when the queries ran again as long as there was already an incident already open for the failing query. If the engineer on call forgot to resolve the incident after triage, then it was possible to not be alerted on new errors!&lt;/p&gt;
+
+&lt;p&gt;Further, because the alerts spanned services, engineers didn’t immediately know where the problem was. Identifying the troubled system component(s) required running the SumoLogic query linked to the PagerDuty Incident, and visually scanning all of the results. Alerts only told the engineer “hey something is broken somewhere…go find it!”&lt;/p&gt;
+
+&lt;p&gt;Another issue was timeliness in detecting errors, purely based on the fact that the queries were run on an hourly basis. Oftentimes the offending logs were intermittent failures from some external service that were already resolved by the time we got the PagerDuty alert.&lt;/p&gt;
+
+&lt;p&gt;Finally, there was a lack of historical context for issues found in logs, for many of the same reasons we had this problem in Log Review. No release or commit information is associated with logs and there is no way to see the history of a log other than searching for the specific log or finding a ticket in JIRA. Context for issues discovered during an on-call rotation was lost as we rolled over to the next engineer. All of this added up in terms of engineering time and therefore cost.&lt;/p&gt;
+
+&lt;h2 id=&quot;goals-to-improve&quot;&gt;Goals To Improve&lt;/h2&gt;
+&lt;p&gt;Log monitoring was helpful, but over time it was clear that we could do better. It was time-consuming, stressful, and prone to human error. In order to be really successful with error monitoring we needed a solution that would:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Provide rapid feedback&lt;/li&gt;
+  &lt;li&gt;Provide more specific alerts&lt;/li&gt;
+  &lt;li&gt;Provide enough context to troubleshoot problems quickly&lt;/li&gt;
+  &lt;li&gt;Keep track of problems over time&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;error-monitoring-with-sentry&quot;&gt;Error Monitoring With Sentry&lt;/h2&gt;
+&lt;p&gt;Sentry at its core is an error aggregator for a wide variety of platforms and programming languages. When an application is integrated with the Sentry SDK, error events are sent to Sentry as they occur and grouped together based on traits like stack trace or message. The grouping of issues makes it much easier to digest problems and has the added benefit of tracking when an issue was first seen and last seen, how frequently it happens, and what environments it has been spotted in.&lt;/p&gt;
+
+&lt;p&gt;Error events can be generated in a number of ways - unhandled exceptions, failed HTTP requests in a web framework like Spring, or even “manually” in the code itself. What interested me the most though was the &lt;a href=&quot;https://docs.sentry.io/platforms/java/guides/logback/&quot;&gt;logback integration&lt;/a&gt;, which is the logging framework we were already using in all of our applications. With this integration we could generate error events from ERROR or WARN log statements that already existed in our code.&lt;/p&gt;
+
+&lt;p&gt;You might be wondering why that’s any better than what we had with SumoLogic. The answer is: context! Sentry captures a lot of valuable information with each event. Some of those bits of information may include:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;HTTP request information — status code, URL, headers&lt;/li&gt;
+  &lt;li&gt;Detailed stack traces&lt;/li&gt;
+  &lt;li&gt;Thread information&lt;/li&gt;
+  &lt;li&gt;Breadcrumbs — log statements preceding the error&lt;/li&gt;
+  &lt;li&gt;Release number&lt;/li&gt;
+  &lt;li&gt;Environment&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;It’s also possible to configure additional context and tags for events. We use the additional context to capture things like git commit, branch name, build number, and build job name. Tags, which are automatically searchable, are used to attach information like the AWS account or the team that owns a particular service.&lt;/p&gt;
+
+&lt;p&gt;All of this makes it much easier for engineers to troubleshoot and diagnose issues in our systems. We can rapidly identify what service a problem occurred in and when exactly that problem started. Further, we have context around the issue that is extremely helpful when debugging.&lt;/p&gt;
+
+&lt;h3 id=&quot;setting-up-projects&quot;&gt;Setting Up Projects&lt;/h3&gt;
+
+&lt;p&gt;Sentry recommends creating a project for each code repository. Each one of our services maps to its own repository, so this was an easy fit. Because we had so many services already, we wrote a Ruby script that used the &lt;a href=&quot;https://github.com/thierryxing/sentry-ruby-api&quot;&gt;sentry-api Gem&lt;/a&gt; to provision projects for all services. This also makes provisioning projects for services in the future easier.&lt;/p&gt;
+
+&lt;p&gt;Part of provisioning a project is the generation of a DSN, which is a credential the Sentry SDK uses to send events for that project. A project can have multiple DSNs, but for now we only use one. This could be useful if you wanted to use a different DSN for each environment and control rate limiting, for example.&lt;/p&gt;
+
+&lt;p&gt;How you want to handle the DSN is up to you. It’s only good for publishing events, so it’s not extremely sensitive information and it can always be revoked and replaced. To be on the safe side, though, we store project DSNs as a secure string in the &lt;a href=&quot;https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html&quot;&gt;AWS Systems Manager Parameter Store&lt;/a&gt;. This happens in our provisioning script.&lt;/p&gt;
+
+&lt;h3 id=&quot;configuring-sentry&quot;&gt;Configuring Sentry&lt;/h3&gt;
+
+&lt;p&gt;The Sentry SDK needs to be initialized with a DSN. This can happen automatically depending on your chosen integration, or with a call in your application bootstrapping code, which is as simple as:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;// Retrieves DSN from your environment
+// sentry.dsn system property or SENTRY_DSN environment variable
+Sentry.init();
+
+// Or you can supply it directly
+Sentry.init(&quot;your-dsn-here&quot;);
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Because our services run as containers on the &lt;a href=&quot;https://aws.amazon.com/ecs/?whats-new-cards.sort-by=item.additionalFields.postDateTime&amp;amp;whats-new-cards.sort-order=desc&amp;amp;ecs-blogs.sort-by=item.additionalFields.createdDate&amp;amp;ecs-blogs.sort-order=desc&quot;&gt;AWS Elastic Container Service&lt;/a&gt;, we can use &lt;a href=&quot;https://docs.aws.amazon.com/AmazonECS/latest/developerguide/specifying-sensitive-data-secrets.html&quot;&gt;ECS Secrets Manager&lt;/a&gt; to automatically fetch the DSN from the parameter store and supply it to the container environment with the SENTRY_DSN environment variable.&lt;/p&gt;
+
+&lt;p&gt;Our lambdas unfortunately need to fetch the DSN from the parameter store themselves when they boot up, but this was fairly trivial for us to do.&lt;/p&gt;
+
+&lt;h3 id=&quot;getting-started-with-logback-integration&quot;&gt;Getting Started With Logback Integration&lt;/h3&gt;
+
+&lt;p&gt;Our code was already using the popular &lt;a href=&quot;https://logback.qos.ch/&quot;&gt;logback framework&lt;/a&gt; via &lt;a href=&quot;https://www.slf4j.org/&quot;&gt;SLF4J&lt;/a&gt;. Sentry offers the sentry-logback module, which includes the &lt;a href=&quot;https://github.com/getsentry/sentry-java/blob/main/sentry-logback/src/main/java/io/sentry/logback/SentryAppender.java&quot;&gt;SentryAppender&lt;/a&gt; class. This can then be added to your logback configuration like any other appender and you are up and running! Configuration can be done programmatically or within your logback.xml file.&lt;/p&gt;
+
+&lt;p&gt;Our lambdas use the logback.xml file to add the appender:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;?xml version=&quot;1.0&quot;?&amp;gt;
+&amp;lt;configuration&amp;gt;
+    &amp;lt;!-- See https://github.com/jlib-framework/jlib-awslambda-logback#configuration --&amp;gt;
+    &amp;lt;appender name=&quot;awslambda&quot; class=&quot;org.jlib.cloud.aws.lambda.logback.AwsLambdaAppender&quot;&amp;gt;
+        &amp;lt;encoder&amp;gt;
+            &amp;lt;charset&amp;gt;UTF-8&amp;lt;/charset&amp;gt;
+            &amp;lt;pattern&amp;gt;%d %-4relative [AWS request ID: %X{AWSRequestId:- }] [%level] %logger - %msg%n&amp;lt;/pattern&amp;gt;
+        &amp;lt;/encoder&amp;gt;
+    &amp;lt;/appender&amp;gt;
+
+    &amp;lt;!-- Configure the Sentry appender. --&amp;gt;
+    &amp;lt;appender name=&quot;sentry&quot; class=&quot;io.sentry.logback.SentryAppender&quot;&amp;gt;
+        &amp;lt;options&amp;gt;
+            &amp;lt;!--
+                SentryAppender tries to initialize the Sentry SDK here and logs a
+                WARN message unless the DSN is set to an empty string. We initialize the Sentry SDK
+                ourselves after fetching the DSN from the AWS SSM parameter store.
+            --&amp;gt;
+            &amp;lt;dsn&amp;gt;${SENTRY_DSN:- }&amp;lt;/dsn&amp;gt;
+        &amp;lt;/options&amp;gt;
+        &amp;lt;minimumEventLevel&amp;gt;${SENTRY_LOG_LEVEL:-WARN}&amp;lt;/minimumEventLevel&amp;gt;
+    &amp;lt;/appender&amp;gt;
+
+    &amp;lt;root level=&quot;${LOG_LEVEL:-WARN}&quot;&amp;gt;
+        &amp;lt;appender-ref ref=&quot;awslambda&quot;/&amp;gt;
+        &amp;lt;appender-ref ref=&quot;sentry&quot;/&amp;gt;
+    &amp;lt;/root&amp;gt;
+&amp;lt;/configuration&amp;gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;While our services take the programmatic approach within a Spring [InitializingBean](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/InitializingBean.html:&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;final SentryAppender sentryAppender = new SentryAppender();
+sentryAppender.setContext(loggerContext);
+sentryAppender.setMinimumEventLevel(Level.WARN);
+sentryAppender.setName(&quot;sentryAppender&quot;);
+sentryAppender.start();
+final Logger logbackLogger = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(&quot;ROOT&quot;);
+logbackLogger.addAppender(sentryAppender);
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;With this configuration, all of our services and lambdas send error events to Sentry whenever a log statement with level WARN or higher is reached.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;log.error(&quot;this is a test-appender&quot;);
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;../assets/images/pkce-flow.webp&quot; alt=&quot;Example Issue in Sentry created from logback integration
+&quot; title=&quot;PKCE Flow&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../assets/images/sentry-issue-created-from-logback-integration.webp&quot; alt=&quot;sentry-issue-created-from-logback-integration .webp&quot; title=&quot;Sample Sentry Issue created from logback integration&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;configuring-alerts&quot;&gt;Configuring Alerts&lt;/h3&gt;
+
+&lt;p&gt;Now that errors are coming in we want to know about it. Sentry supports two types of alerts: Metric and Issue. Both types of alerts support triggering actions with one or more integrations. We have the Slack and PagerDuty integrations set up. Depending on the rules in the alert the team will see a message in a Slack channel and/or a PagerDuty alert will be sent to the engineer on call.&lt;/p&gt;
+
+&lt;p&gt;The Slack channel and configuration for the PagerDuty alert are based on an “environment_type” tag we apply to events. This helps us to reduce noise and prioritize based on where Issues are occurring. If something is breaking in prod, we want to be able to clearly see that. We do this by using a different Slack channel for prod and staging.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../assets/images/error-monitoring-issue-alert.webp&quot; alt=&quot;error-monitoring-issue-alert.webp&quot; title=&quot;An issue alert in Sentry&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Issue alerts are centered around a single, specific Issue (grouped errors). We have alerts configured to let us know when:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;A new issue has been created&lt;/li&gt;
+  &lt;li&gt;An issue is occurring frequently&lt;/li&gt;
+  &lt;li&gt;A resolved issue is re-opened (seen again)&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Because we want to route alerts based on “environment_type”, we have to create the same alerts for each type.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;../assets/images/error-monitoring-metric-alert.webp&quot; alt=&quot;error-monitoring-metric-alert.webp&quot; title=&quot;A metric alert in Sentry&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Metric alerts work based on counts across all issues within a project. Sentry billing works based on an event quota, and the alert pictured above is designed to make sure we are not caught off guard when we start seeing a high volume of events from any service in any environment. If the quota is reached, then Sentry could start to reject events.&lt;/p&gt;
+
+&lt;h3 id=&quot;handling-alerts&quot;&gt;Handling Alerts&lt;/h3&gt;
+
+&lt;p&gt;All engineers on the team can see alert activity in one or more Slack channels. PagerDuty alerts are also sent to an on-call engineer.&lt;/p&gt;
+
+&lt;p&gt;When an engineer looks at the issue they can assign it to themselves, create a JIRA ticket if one is not already linked, or add comments to let other engineers know what investigation they’ve done. Errors now have historical context!&lt;/p&gt;
+
+&lt;h2 id=&quot;evaluating-sentry-against-our-goals&quot;&gt;Evaluating Sentry Against Our Goals&lt;/h2&gt;
+&lt;h3 id=&quot;provide-rapid-feedback&quot;&gt;Provide rapid feedback&lt;/h3&gt;
+
+&lt;p&gt;Alerts go to Slack and/or PagerDuty when they are triggered. We no longer wait up to an hour to be notified of issues. Also, instead of a single engineer receiving alerts, every member of the team can see activity in the Sentry Slack channel.&lt;/p&gt;
+
+&lt;h3 id=&quot;provide-more-specific-alerts&quot;&gt;Provide more specific alerts&lt;/h3&gt;
+
+&lt;p&gt;Issue alerts let us know about a specific error in a specific service. The alert itself has the specific error in it. This means the on-call engineer can quickly glance at their phone and have some idea of where the problem is and how to prioritize it.&lt;/p&gt;
+
+&lt;h3 id=&quot;provide-enough-context-to-troubleshoot-problems-quickly&quot;&gt;Provide enough context to troubleshoot problems quickly&lt;/h3&gt;
+
+&lt;p&gt;Sentry issues can provide a lot of useful context. We can see (scrubbed) request information, build/commit, history and we can add context ourselves where we need it. The build and historical information alone are invaluable in locating code that may have broken something.&lt;/p&gt;
+
+&lt;h3 id=&quot;keep-track-of-problems-over-time&quot;&gt;Keep track of problems over time&lt;/h3&gt;
+
+&lt;p&gt;Sentry has removed the guesswork of determining whether an error is new or is known and already tracked. We know who has looked at the error and can see any activity or linked JIRA tickets. This represents a huge time savings for our engineers and cuts down on the “tribal knowledge” problem we had before.&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusions&quot;&gt;Conclusions&lt;/h2&gt;
+&lt;p&gt;Sentry has been a great addition to our toolbox for monitoring and troubleshooting. We still need and use other tools like SumoLogic and CloudWatch, but it has become an excellent starting point for investigating issues both before and after deployment to production.&lt;/p&gt;
+
+&lt;p&gt;The main struggle we had was getting alerts configured for all of our projects. The API that the UI uses is not technically public so it made writing our script to create alerts a challenge. Scripting to manage Sentry configuration is needed, especially for larger organizations, because setting up every project manually is definitely not scalable or fun.&lt;/p&gt;
+</description>
+        <pubDate>Fri, 30 May 2025 00:00:00 +0530</pubDate>
+        <link>http://localhost:4000/proactive-bug-hunting-and-error-monitoring-with-sentry/</link>
+        <guid isPermaLink="true">http://localhost:4000/proactive-bug-hunting-and-error-monitoring-with-sentry/</guid>
+        
+        
+        <category>Error Monitoring</category>
+        
+        <category>Software Development</category>
+        
+      </item>
+    
+      <item>
+        <title>First cut: Individual Contributor to Engineering Manager</title>
+        <description>&lt;p&gt;This is a reflection or retrospection and an attempt to share the takeaways of my journey so far. I started officially as an Engineering Manager in the last 8 months. Before that, I was acting as a Tech Lead, just got promoted to Staff Software Engineer.&lt;/p&gt;
+
+&lt;p&gt;I have been in the information technology industry for the last 10+ years and one of the things that were pretty clear to me since the beginning was that my personality is more people-oriented and I like to talk to people, engage with them along with spending time on solving technological problems.&lt;/p&gt;
+
+&lt;p&gt;Few people see moving to a management role as a promotion but I always looked at it as a new role starting from ground zero and thus I need to be mindful of what needs to change in my daily routine/responsibilities going forward. I knew right off the bat that if I don’t change anything then I’ll be shooting myself in the foot.&lt;/p&gt;
+
+&lt;p&gt;As an individual contributor, I was exposed to only technical problems but on the flip side, I’d be exposed to Products, People, Processes, and Technical Problems (Yes, you read that right!).&lt;/p&gt;
+
+&lt;h2 id=&quot;trust-and-culture&quot;&gt;Trust and Culture&lt;/h2&gt;
+&lt;p&gt;Trust is a very important element in order to succeed as a team and thus it was important for me to plug myself into team members’ daily tasks and understand their concerns. The recurring 1:1s is a very useful tool in order to address these problems. I try to keep all team communications open and transparent.&lt;/p&gt;
+
+&lt;h2 id=&quot;lead-with-context&quot;&gt;Lead with Context&lt;/h2&gt;
+&lt;p&gt;&lt;img src=&quot;../assets/images/lead-with-context.png&quot; alt=&quot;Lead With Context&quot; title=&quot;Lead With Context&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Another challenge being in this role is you need to be technical, understand the technology and more importantly need to understand how that technology is intertwined into a product and define usage pattern and user experience for the customers. This ability gives an extra strength to lead the team in the right direction and get us to the desired outcome.&lt;/p&gt;
+
+&lt;h2 id=&quot;stakeholder-management&quot;&gt;Stakeholder Management&lt;/h2&gt;
+&lt;p&gt;When I stepped into this role, stakeholder management became a day 1 operation for me as in getting alignment across the teams, unblocking upstream/downstream services, UX/Product Management team’s ever-changing requirements, and aligning priorities and deadlines. This seems difficult to achieve but with a great team, strong processes, and a sense of ownership within the teams, it definitely made it easier.&lt;/p&gt;
+
+&lt;h2 id=&quot;delegation&quot;&gt;Delegation&lt;/h2&gt;
+&lt;p&gt;&lt;img src=&quot;../assets/images/delegation.png&quot; alt=&quot;Delegation&quot; title=&quot;Delegation&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Moving from IC to Manager, one thing was pretty clear to me that I can not do everything on my own and if I’m going the same IC route, then I won’t be fair to my role and also not setting the team for success. I viewed my role now as a guard rail on the bowling alley whose job is to make sure the ball does not go into the gutter and redirect it back onto the target. It’s ever important to take a step back and let the technical lead take the ownership and not try to be the smartest person in the room. The more you listen, the better it gives others an opportunity to grow.&lt;/p&gt;
+
+&lt;h2 id=&quot;be-aware-and-stay-ahead&quot;&gt;Be Aware and Stay ahead&lt;/h2&gt;
+&lt;p&gt;As an engineering manager, you receive information from the top, down, left, right and at the same time, questions come too. Since the teams are distributed geographically, it’s important to be aware and document everything in order to keep all information up to date and everyone on the same page. This really helped me fill those communication edge gaps and unblocked the team from time to time.&lt;/p&gt;
+</description>
+        <pubDate>Sun, 25 May 2025 00:00:00 +0530</pubDate>
+        <link>http://localhost:4000/ic-to-mgr/</link>
+        <guid isPermaLink="true">http://localhost:4000/ic-to-mgr/</guid>
+        
+        
+        <category>management</category>
+        
+        <category>leadership</category>
+        
+      </item>
     
       <item>
         <title>Enhancing OAuth 2.0 Security with PKCE: A Deep Dive into External Partner Integration</title>
@@ -137,7 +429,7 @@ grant_type=authorization_code
 
 &lt;p&gt;This standardized OAuth 2.0 PKCE flow provides a secure foundation for all future integrations, ensuring consistent authentication security across applications. Adopting PKCE enhances protection against evolving threats, making third-party integrations robust, reliable, and future-proof. For more details, visit Omnissa Intelligence.&lt;/p&gt;
 </description>
-        <pubDate>Sun, 23 Mar 2025 00:00:00 +0530</pubDate>
+        <pubDate>Sat, 24 May 2025 00:00:00 +0530</pubDate>
         <link>http://localhost:4000/enhancing-oauth-2-0-security-with-pkce/</link>
         <guid isPermaLink="true">http://localhost:4000/enhancing-oauth-2-0-security-with-pkce/</guid>
         
@@ -278,31 +570,6 @@ grant_type=authorization_code
       </item>
     
       <item>
-        <title>The first mass-produced book to deviate from a rectilinear format</title>
-        <description>&lt;p&gt;The first mass-produced book to deviate from a rectilinear format, at least in the United States, is thought to be this 1863 edition of Red Riding Hood, cut into the shape of the protagonist herself with the troublesome wolf curled at her feet. Produced by the Boston-based publisher Louis Prang, this is the first in their “Doll Series”, a set of five “die-cut” books, known also as shape books — the other titles being Robinson Crusoe, Goody Two-Shoes (also written by Red Riding Hood author Lydia Very), Cinderella, and King Winter.&lt;/p&gt;
-
-&lt;p&gt;An 1868 Prang catalogue would later claim that such “books in the shape of a regular paper Doll… originated with us”.&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;It would seem the claim could also extend to die cut books in general, as we can’t find anything sooner, but do let us know in the comments if you have further light to shed on this! Such books are, of course, still popular in children’s publishing today, though the die cutting is not now limited to mere outlines, as evidenced in a beautiful 2014 version of the same Little Red Riding Hood story.&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;The die cut has also been employed in the non-juvenile sphere as well, a recent example being Jonathan Safran Foer’s ambitious Tree of Codes.&lt;/p&gt;
-
-&lt;p&gt;As for this particular rendition of Charles Perrault’s classic tale, the text and design is by Lydia Very (1823-1901), sister of Transcendentalist poet Jones Very. The gruesome ending of the original - which sees Little Red Riding Hood being gobbled up as well as her grandmother - is avoided here, the gore giving way to the less bloody aims of the morality tale, and the lesson that one should not disobey one’s mother.&lt;/p&gt;
-</description>
-        <pubDate>Tue, 12 Jun 2018 00:00:00 +0530</pubDate>
-        <link>http://localhost:4000/first-mass-produced/</link>
-        <guid isPermaLink="true">http://localhost:4000/first-mass-produced/</guid>
-        
-        
-        <category>Jekyll</category>
-        
-        <category>tutorial</category>
-        
-      </item>
-    
-      <item>
         <title>Education must also train one for quick, resolute and effective thinking.</title>
         <description>&lt;p&gt;There are lots of powerful things you can do with the Markdown editor&lt;/p&gt;
 
@@ -360,31 +627,6 @@ grant_type=authorization_code
       </item>
     
       <item>
-        <title>Accumulated experience of social living</title>
-        <description>&lt;p&gt;The die cut has also been employed in the non-juvenile sphere as well, a recent example being Jonathan Safran Foer’s ambitious Tree of Codes.&lt;/p&gt;
-
-&lt;p&gt;As for this particular rendition of Charles Perrault’s classic tale, the text and design is by Lydia Very (1823-1901), sister of Transcendentalist poet Jones Very. The gruesome ending of the original - which sees Little Red Riding Hood being gobbled up as well as her grandmother - is avoided here, the gore giving way to the less bloody aims of the morality tale, and the lesson that one should not disobey one’s mother.&lt;/p&gt;
-
-&lt;p&gt;The first mass-produced book to deviate from a rectilinear format, at least in the United States, is thought to be this 1863 edition of Red Riding Hood, cut into the shape of the protagonist herself with the troublesome wolf curled at her feet. Produced by the Boston-based publisher Louis Prang, this is the first in their “Doll Series”, a set of five “die-cut” books, known also as shape books — the other titles being Robinson Crusoe, Goody Two-Shoes (also written by Red Riding Hood author Lydia Very), Cinderella, and King Winter.&lt;/p&gt;
-
-&lt;p&gt;An 1868 Prang catalogue would later claim that such “books in the shape of a regular paper Doll… originated with us”.&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;It would seem the claim could also extend to die cut books in general, as we can’t find anything sooner, but do let us know in the comments if you have further light to shed on this! Such books are, of course, still popular in children’s publishing today, though the die cutting is not now limited to mere outlines, as evidenced in a beautiful 2014 version of the same Little Red Riding Hood story.&lt;/p&gt;
-&lt;/blockquote&gt;
-</description>
-        <pubDate>Tue, 12 Jun 2018 00:00:00 +0530</pubDate>
-        <link>http://localhost:4000/acumulated-experience/</link>
-        <guid isPermaLink="true">http://localhost:4000/acumulated-experience/</guid>
-        
-        
-        <category>Jekyll</category>
-        
-        <category>tutorial</category>
-        
-      </item>
-    
-      <item>
         <title>About Bundler</title>
         <description>&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;gem install bundler&lt;/code&gt; installs the bundler gem through RubyGems. You only need to install it once - not every time you create a new Jekyll project. Here are some additional details:&lt;/p&gt;
 
@@ -406,14 +648,20 @@ grant_type=authorization_code
       </item>
     
       <item>
-        <title>We all wait for summer</title>
-        <description>&lt;p&gt;As I engage in the so-called “bull sessions” around and about the school, I too often find that most college men have a misconception of the purpose of education. Most of the “brethren” think that education should equip them with the proper instruments of exploitation so that they can forever trample over the masses. Still others think that education should furnish them with noble ends rather than means to an end.&lt;/p&gt;
+        <title>Options for creating a new site with Jekyll</title>
+        <description>&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll new &amp;lt;PATH&amp;gt;&lt;/code&gt; installs a new Jekyll site at the path specified (relative to current directory). In this case, Jekyll will be installed in a directory called &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;myblog&lt;/code&gt;. Here are some additional details:&lt;/p&gt;
 
-&lt;p&gt;It seems to me that education has a two-fold function to perform in the life of man and in society: the one is utility and the other is culture. Education must enable a man to become more efficient, to achieve with increasing facility the ligitimate goals of his life.&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;To install the Jekyll site into the directory you’re currently in, run &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll new&lt;/code&gt; . If the existing directory isn’t empty, you can pass the –force option with jekyll new . –force.&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll new&lt;/code&gt; automatically initiates &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bundle install&lt;/code&gt; to install the dependencies required. (If you don’t want Bundler to install the gems, use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll new myblog --skip-bundle&lt;/code&gt;.)&lt;/li&gt;
+  &lt;li&gt;By default, the Jekyll site installed by &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll new&lt;/code&gt; uses a gem-based theme called Minima. With gem-based themes, some of the directories and files are stored in the theme-gem, hidden from your immediate view.&lt;/li&gt;
+  &lt;li&gt;We recommend setting up Jekyll with a gem-based theme but if you want to start with a blank slate, use &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll new myblog --blank&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;To learn about other parameters you can include with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll new&lt;/code&gt;, type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;jekyll new --help&lt;/code&gt;.&lt;/li&gt;
+&lt;/ul&gt;
 </description>
         <pubDate>Fri, 12 Jan 2018 00:00:00 +0530</pubDate>
-        <link>http://localhost:4000/we-all-wait-for-summer/</link>
-        <guid isPermaLink="true">http://localhost:4000/we-all-wait-for-summer/</guid>
+        <link>http://localhost:4000/options-for-creating-new-site-with-jekyll/</link>
+        <guid isPermaLink="true">http://localhost:4000/options-for-creating-new-site-with-jekyll/</guid>
         
         
         <category>Jekyll</category>
@@ -423,23 +671,28 @@ grant_type=authorization_code
       </item>
     
       <item>
-        <title>Tree of Codes</title>
-        <description>&lt;p&gt;The first mass-produced book to deviate from a rectilinear format, at least in the United States, is thought to be this 1863 edition of Red Riding Hood, cut into the shape of the protagonist herself with the troublesome wolf curled at her feet. Produced by the Boston-based publisher Louis Prang, this is the first in their “Doll Series”, a set of five “die-cut” books, known also as shape books — the other titles being Robinson Crusoe, Goody Two-Shoes (also written by Red Riding Hood author Lydia Very), Cinderella, and King Winter.&lt;/p&gt;
+        <title>Let&apos;s test spoilers</title>
+        <description>&lt;p&gt;Director Roland Suso Richter’s enigmatic psychological thriller (direct to video/DVD) was based upon screenwriter Michael Cooney’s own play “Point of Death” - a title that gave away the film’s entire plot twist premise.&lt;/p&gt;
 
-&lt;p&gt;As for this particular rendition of Charles Perrault’s classic tale, the text and design is by Lydia Very (1823-1901), sister of Transcendentalist poet Jones Very. The gruesome ending of the original — which sees Little Red Riding Hood being gobbled up as well as her grandmother — is avoided here, the gore giving way to the less bloody aims of the morality tale, and the lesson that one should not disobey one’s mother.&lt;/p&gt;
+&lt;p&gt;As in many similar films, such as Jacob’s Ladder (1990), Soul Survivors (2001), and The Butterfly Effect (2004), events and people were thoroughly distorted and confused because the protagonist was at the point of death. The tagline was misleading:&lt;/p&gt;
 
-&lt;blockquote&gt;
-  &lt;p&gt;It would seem the claim could also extend to die cut books in general, as we can’t find anything sooner, but do let us know in the comments if you have further light to shed on this! Such books are, of course, still popular in children’s publishing today, though the die cutting is not now limited to mere outlines, as evidenced in a beautiful 2014 version of the same Little Red Riding Hood story.&lt;/p&gt;
-&lt;/blockquote&gt;
+&lt;p&gt;“When You Don’t Have a Memory, How Can You Remember Who to Trust?”&lt;/p&gt;
 
-&lt;p&gt;An 1868 Prang catalogue would later claim that such “books in the shape of a regular paper Doll… originated with us”.&lt;/p&gt;
+&lt;p&gt;The mind-warping film opened with a hospital patient Simon Cable (Ryan Phillippe) awakening in a &lt;span class=&quot;spoiler&quot;&gt; hospital with little knowledge (amnesia perhaps?) of what had happened, and why he was there, etc. He was told by attending Dr. Jeremy Newman (Stephen Rea) that it was July 29, 2002 (Simon thought it was the year 2000 - he was confused - he heard a doctor say 20:00 hours!) and that he had died for two minutes from cardiac arrest following the near-fatal accident – but he had been revived (“You’re as good as new”).&lt;/span&gt; Dr. Newman: “Simon, this is the 29th of July. The year is 2002. And your wife, whose name is Anna, is waiting outside.”&lt;/p&gt;
 
-&lt;p&gt;The die cut has also been employed in the non-juvenile sphere as well, a recent example being Jonathan Safran Foer’s ambitious Tree of Codes.&lt;/p&gt;
+&lt;p&gt;(The doctor left off four crucial additional words, revealed in the film’s ending.) (Spoiler: Simon had died and was not resuscitated!).&lt;/p&gt;
 
+&lt;p&gt;A major clue to everything that truly happened was the scene that played next under the credits - hospital staff failed to bring a patient back to life with a defibrillator after a car accident. Chest compressions failed and there was no pulse. A second major clue was provided by hospital orderly Travis (Stephen Graham): &lt;span class=&quot;spoiler&quot;&gt;Everybody dies. No mystery there. But why and how everyone dies. Now, there’s a mystery worth solving. Probably the biggest mystery there is.&lt;/span&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;so-how-do-we-do-spoilers&quot;&gt;So how do we do spoilers?&lt;/h4&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;nt&quot;&gt;&amp;lt;span&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;class=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;spoiler&quot;&lt;/span&gt;&lt;span class=&quot;nt&quot;&gt;&amp;gt;&lt;/span&gt;My hidden paragraph here.&lt;span class=&quot;nt&quot;&gt;&amp;lt;/span&amp;gt;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 </description>
-        <pubDate>Fri, 12 Jan 2018 00:00:00 +0530</pubDate>
-        <link>http://localhost:4000/tree-of-codes/</link>
-        <guid isPermaLink="true">http://localhost:4000/tree-of-codes/</guid>
+        <pubDate>Thu, 11 Jan 2018 00:00:00 +0530</pubDate>
+        <link>http://localhost:4000/quick-start-guide/</link>
+        <guid isPermaLink="true">http://localhost:4000/quick-start-guide/</guid>
         
         
         <category>Jekyll</category>
@@ -449,50 +702,42 @@ grant_type=authorization_code
       </item>
     
       <item>
-        <title>Red Riding Hood</title>
-        <description>&lt;p&gt;The first mass-produced book to deviate from a rectilinear format, at least in the United States, is thought to be this 1863 edition of Red Riding Hood, cut into the shape of the protagonist herself with the troublesome wolf curled at her feet. Produced by the Boston-based publisher Louis Prang, this is the first in their “Doll Series”, a set of five “die-cut” books, known also as shape books — the other titles being Robinson Crusoe, Goody Two-Shoes (also written by Red Riding Hood author Lydia Very), Cinderella, and King Winter.&lt;/p&gt;
+        <title>Inception Movie</title>
+        <description>&lt;p&gt;Review products, books, movies, restaurant and anything you like on your Jekyll blog with Mediumish! JSON-LD ready for review property.&lt;/p&gt;
 
-&lt;p&gt;An 1868 Prang catalogue would later claim that such “books in the shape of a regular paper Doll… originated with us”.&lt;/p&gt;
+&lt;h4 id=&quot;how-to-use&quot;&gt;How to use?&lt;/h4&gt;
 
-&lt;blockquote&gt;
-  &lt;p&gt;It would seem the claim could also extend to die cut books in general, as we can’t find anything sooner, but do let us know in the comments if you have further light to shed on this! Such books are, of course, still popular in children’s publishing today, though the die cutting is not now limited to mere outlines, as evidenced in a beautiful 2014 version of the same Little Red Riding Hood story.&lt;/p&gt;
-&lt;/blockquote&gt;
+&lt;p&gt;It’s actually really simple! Add the rating in your YAML front matter. It also supports halfs:&lt;/p&gt;
 
-&lt;p&gt;The die cut has also been employed in the non-juvenile sphere as well, a recent example being Jonathan Safran Foer’s ambitious Tree of Codes.&lt;/p&gt;
-
-&lt;p&gt;As for this particular rendition of Charles Perrault’s classic tale, the text and design is by Lydia Very (1823-1901), sister of Transcendentalist poet Jones Very. The gruesome ending of the original — which sees Little Red Riding Hood being gobbled up as well as her grandmother — is avoided here, the gore giving way to the less bloody aims of the morality tale, and the lesson that one should not disobey one’s mother.&lt;/p&gt;
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;---
+layout: post
+title:  &quot;Inception Movie&quot;
+author: john
+categories: [ Jekyll, tutorial ]
+tags: [red, yellow]
+image: assets/images/11.jpg
+description: &quot;My review of Inception movie. Actors, directing and more.&quot;
+rating: 4.5
+---
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 </description>
-        <pubDate>Fri, 12 Jan 2018 00:00:00 +0530</pubDate>
-        <link>http://localhost:4000/red-riding/</link>
-        <guid isPermaLink="true">http://localhost:4000/red-riding/</guid>
+        <pubDate>Thu, 11 Jan 2018 00:00:00 +0530</pubDate>
+        <link>http://localhost:4000/customer-service/</link>
+        <guid isPermaLink="true">http://localhost:4000/customer-service/</guid>
         
+        <category>red</category>
         
-        <category>Jekyll</category>
-        
-        <category>tutorial</category>
-        
-      </item>
-    
-      <item>
-        <title>Press and education</title>
-        <description>&lt;p&gt;Even the press, the classroom, the platform, and the pulpit in many instances do not give us objective and unbiased truths. To save man from the morass of propaganda, in my opinion, is one of the chief aims of education. Education must enable one to sift and weigh evidence, to discern the true from the false, the real from the unreal, and the facts from the fiction.&lt;/p&gt;
-
-&lt;p&gt;Education must also train one for quick, &lt;strong&gt;resolute and effective thinking&lt;/strong&gt;. To think incisively and to think for one’s self is very difficult.&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;We are prone to let our mental life become invaded by legions of half truths, prejudices, and propaganda. At this point, I often wonder whether or not education is fulfilling its purpose. A great majority of the so-called educated people do not think logically and scientifically.&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;The function of education, therefore, is to teach one to think intensively and to think critically. But education which stops with efficiency may prove the greatest menace to society. The most dangerous criminal may be the man gifted with reason, but with no morals.&lt;/p&gt;
-
-&lt;p&gt;The late Eugene Talmadge, in my opinion, possessed one of the better minds of Georgia, or even America. Moreover, he wore the Phi Beta Kappa key. By all measuring rods, Mr. Talmadge could think critically and intensively; yet he contends that I am an inferior being. Are those the types of men we call educated?&lt;/p&gt;
-
-&lt;p&gt;We must remember that intelligence is not enough. Intelligence plus character–that is the goal of true education. The complete education gives one not only power of concentration, but worthy objectives upon which to concentrate. The broad education will, therefore, transmit to one not only the accumulated knowledge of the race but also the accumulated experience of social living.&lt;/p&gt;
-
-</description>
-        <pubDate>Fri, 12 Jan 2018 00:00:00 +0530</pubDate>
-        <link>http://localhost:4000/press-and-education/</link>
-        <guid isPermaLink="true">http://localhost:4000/press-and-education/</guid>
+        <category>yellow</category>
         
         
         <category>Jekyll</category>

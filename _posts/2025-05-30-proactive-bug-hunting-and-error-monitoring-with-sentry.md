@@ -7,9 +7,6 @@ author: parrellad
 image: assets/images/error_monitoring_main_image_front_page.webp
 featured: true
 ---
-
-![error_monitoring_main_image_front_page.webp](../assets/images/error_monitoring_main_image_front_page.webp)
-
 We don’t live in a perfect world, and software is no exception to that. Testing can’t always catch everything or anticipate every potential failure with third-party dependencies or services. Code reviewers and the engineers who wrote the code are susceptible to fatigue and human error. It is simply a fact that bugs and other errors are going to happen at some point.
 
 Acknowledging this truth requires that we have feedback mechanisms in place to let us know when unexpected errors occur, so that we can quickly investigate and resolve issues before they impact our customers. It’s even better (and much less expensive) when issues are detected before they can even reach our customers.

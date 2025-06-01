@@ -6,6 +6,7 @@ categories: security
 author: samarp
 image: assets/images/oauth-pkce-flow.webp
 featured: true
+#rating: 3
 ---
 
 ## Introduction
