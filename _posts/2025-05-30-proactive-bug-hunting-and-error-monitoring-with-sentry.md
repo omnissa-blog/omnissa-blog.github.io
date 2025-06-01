@@ -4,6 +4,7 @@ title:  "Proactive Bug Hunting and Error Monitoring with Sentry"
 date:   2025-05-30
 categories: [Error Monitoring, Software Development]
 author: parrellad
+image: assets/images/error_monitoring_main_image_front_page.webp
 featured: true
 ---
 
