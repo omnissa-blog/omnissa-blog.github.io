@@ -4,11 +4,9 @@ title:  "New Hire Rules"
 date:   2025-05-30
 categories: [Career Development]
 author: jbedient
-image: assets/images/new_hire_rules.webp
-featured: true
+image: assets/images/new-hire-rules.webp
+featured: false
 ---
-
-![new-hire-rules.webp](../assets/images/new-hire-rules.webp "New Hire Rules")
 
 The other day I bit the hook on an alluring bait article about an outraged dad and a list of rules his 16-year-old daughter had received from her boss the first day on the job. Do tell!
 
