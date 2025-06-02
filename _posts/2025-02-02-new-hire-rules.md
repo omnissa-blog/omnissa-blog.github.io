@@ -2,7 +2,7 @@
 layout: post
 title:  "New Hire Rules"
 date:   2025-05-30
-categories: [Error Monitoring, Software Development]
+categories: [Career Development]
 author: jbedient
 image: assets/images/new_hire_rules.webp
 featured: true
