@@ -1,11 +1,11 @@
 ---
 layout: post
 title:  "Enhancing OAuth 2.0 Security with PKCE: A Deep Dive into External Partner Integration"
-date:   2025-06-02
+date:   2025-06-01
 categories: security
 author: samarp
-image: assets/images/oauth-pkce-flow.webp
-featured: true
+image: assets/images/posts/2025/oauth-pkce-flow.webp
+featured: false
 #rating: 3
 ---
 
@@ -22,7 +22,7 @@ PKCE (Proof Key for Code Exchange) is an enhancement to the OAuth 2.0 authorizat
 
 At a high level, this is an overview of how the flow appears.
 
-![PKCE Flow](../assets/images/oauth-pkce-flow.webp "PKCE Flow")
+![PKCE Flow](../assets/images/posts/2025/oauth-pkce-flow.webp "PKCE Flow")
 
 ### Key PKCE Parameters
 * **Code Verifier:**  A cryptographically random string used to correlate the authorization request with the token request.
@@ -37,7 +37,7 @@ By enforcing OAuth PKCE, External Partner services ensure that only the original
 ## PKCE Flow Overview
 The OAuth 2.0 PKCE flow for Omnissa Intelligence integrating with an External Partner follows these steps:
 
-![PKCE Flow](../assets/images/pkce-flow.webp "PKCE Flow")
+![PKCE Flow](../assets/images/posts/2025/pkce-flow.webp "PKCE Flow")
 
 During the initial step (https://external-partner.com/oauth/authorize) of the OAuth procedure, the Omnissa Intelligence Authorization Server provides the `code_challenge` parameter to the External Partner Authorization Server.
 

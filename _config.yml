@@ -53,6 +53,12 @@ exclude: [changelog.md, LICENSE.txt, README.md, Gemfile, Gemfile.lock]
 
 # Authors
 authors:
+  pkadu:
+    name: Parag Kadu
+    display_name: Parag Kadu
+    avatar: 'assets/images/avatar/pkadu-avatar.png'
+    email: pkadu@omnissa.com
+
   samarp:
     name: Samar Prakash
     display_name: Samar Prakash
