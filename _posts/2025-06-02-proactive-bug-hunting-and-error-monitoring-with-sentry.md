@@ -1,11 +1,11 @@
 ---
 layout: post
 title:  "Proactive Bug Hunting and Error Monitoring with Sentry"
-date:   2025-05-30
+date:   2025-06-02
 categories: [Error Monitoring, Software Development]
 author: parrellad
-image: assets/images/error_monitoring_main_image_front_page.webp
-featured: true
+image: assets/images/posts/2025/error_monitoring_main_image_front_page.webp
+featured: false
 ---
 We don’t live in a perfect world, and software is no exception to that. Testing can’t always catch everything or anticipate every potential failure with third-party dependencies or services. Code reviewers and the engineers who wrote the code are susceptible to fatigue and human error. It is simply a fact that bugs and other errors are going to happen at some point.
 
@@ -150,9 +150,9 @@ log.error("this is a test-appender");
 ```
 
 ![Example Issue in Sentry created from logback integration
-](../assets/images/pkce-flow.webp "PKCE Flow")
+](../assets/images/posts/2025/pkce-flow.webp "PKCE Flow")
 
-![sentry-issue-created-from-logback-integration .webp](../assets/images/sentry-issue-created-from-logback-integration.webp "Sample Sentry Issue created from logback integration")
+![sentry-issue-created-from-logback-integration .webp](../assets/images/posts/2025/sentry-issue-created-from-logback-integration.webp "Sample Sentry Issue created from logback integration")
 
 ### Configuring Alerts
 
@@ -160,7 +160,7 @@ Now that errors are coming in we want to know about it. Sentry supports two type
 
 The Slack channel and configuration for the PagerDuty alert are based on an “environment_type” tag we apply to events. This helps us to reduce noise and prioritize based on where Issues are occurring. If something is breaking in prod, we want to be able to clearly see that. We do this by using a different Slack channel for prod and staging.
 
-![error-monitoring-issue-alert.webp](../assets/images/error-monitoring-issue-alert.webp "An issue alert in Sentry")
+![error-monitoring-issue-alert.webp](../assets/images/posts/2025/error-monitoring-issue-alert.webp "An issue alert in Sentry")
 
 Issue alerts are centered around a single, specific Issue (grouped errors). We have alerts configured to let us know when:
 
@@ -170,7 +170,7 @@ Issue alerts are centered around a single, specific Issue (grouped errors). We h
 
 Because we want to route alerts based on “environment_type”, we have to create the same alerts for each type.
 
-![error-monitoring-metric-alert.webp](../assets/images/error-monitoring-metric-alert.webp "A metric alert in Sentry")
+![error-monitoring-metric-alert.webp](../assets/images/posts/2025/error-monitoring-metric-alert.webp "A metric alert in Sentry")
 
 Metric alerts work based on counts across all issues within a project. Sentry billing works based on an event quota, and the alert pictured above is designed to make sure we are not caught off guard when we start seeing a high volume of events from any service in any environment. If the quota is reached, then Sentry could start to reject events.
 
