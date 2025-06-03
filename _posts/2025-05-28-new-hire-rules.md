@@ -1,10 +1,10 @@
 ---
 layout: post
 title:  "New Hire Rules"
-date:   2025-05-30
+date:   2025-05-28
 categories: [Career Development]
 author: jbedient
-image: assets/images/new-hire-rules.webp
+image: assets/images/posts/2025/new-hire-rules.webp
 featured: false
 ---
 
@@ -18,7 +18,7 @@ Rule 3: You will NOT make $60,000 a year out of high school. You won’t be a vi
 
 Rule 4: If you think your teacher is tough, wait till you get a boss.
 
-![new-hires_rules_illustration_1.webp](../assets/images/new-hires_rules_illustration_1.webp "New Hire Rules Illustration 1")
+![new-hires_rules_illustration_1.webp](../assets/images/posts/2025/new-hires_rules_illustration_1.webp "New Hire Rules Illustration 1")
 
 There are eleven in total, but you get the picture. Old school tough love pull yourself up by the bootstraps with a side dish of “I had to walk uphill both ways to school and so should you.”
 
@@ -38,7 +38,7 @@ All of this got me thinking though: What rules or ideas do I normally impart to 
 
 So, What would my list look like for a design team?
 
-![new-hire-rules-illustration_2.webp](../assets/images/new-hire-rules-illustration_2.webp "New Hire Rules Illustration 2")
+![new-hire-rules-illustration_2.webp](../assets/images/posts/2025/new-hire-rules-illustration_2.webp "New Hire Rules Illustration 2")
 
 Here are a few that I think relate to the design/product world in which we live and breathe.
 
