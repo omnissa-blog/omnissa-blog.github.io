@@ -17,11 +17,22 @@ Omnissa Intelligence is a cloud-native platform designed to unify and analyze te
 * Enhance employee productivity and engagement by monitoring digital workspace metrics that impact user experience
 * Leverage machine learning models to gain deep insights across your digital workspace
 
-Built on a scalable architecture hosted on Amazon Web Services (AWS), Omnissa Intelligence leverages machine learning models to assess user risk scores based on activity and device context. This facilitates a zero-trust security approach, ensuring continuous verification and compliance across the enterprise.
-
-The platform’s impact is evident across various industries. For instance, West Midlands Police utilized Omnissa Intelligence to enhance mobility and productivity for their officers, while Rentokil Initial successfully migrated 12,000 iOS devices to Workspace ONE in just three months, streamlining their operations
-
 With a customer base spanning over 26,000 organizations worldwide, Omnissa Intelligence continues to be a trusted solution for enterprises seeking to optimize their digital work environments.
+
+## Technical Overview
+Intelligence is the data lake of Omnissa Digital Workspace Platform
+* It is a cloud native service, hosted on Amazon Web Services (AWS)
+* Highly scalable, available & microservices based modern architecture
+* Over 75+ microservices and 40+ lambdas
+* CICD Pipeline- Biweekly Release allowing new features and functionality to be released with greater speed and frequency.
+* Tech Stack - Java, Spring, AWS
+* Current Load: 3+ Billion events per day, 5TB of data per day, 10k+ Customer
+
+
+## High Level Architecture
+![Omnissa Intelligence Architecture](../assets/images/posts/2025/Intel-HLD.jpg "Omnissa Intelligence Architecture")
+Intelligence has a microservices-based architecture that is designed to be highly scalable and resilient. It leverages AWS services such as Amazon S3 for data storage, Amazon Kinesis for real-time data streaming, and Amazon SageMaker for machine learning model training and inference.
+
 
 ## Data Sources
 Workspace ONE Intelligence receives and stores data from a number of sources
