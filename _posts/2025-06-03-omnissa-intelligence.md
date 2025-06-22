@@ -48,4 +48,4 @@ What makes this even more rewarding is the impact. The solutions we build aren�
 
 If you’re someone who thrives on ownership, cares deeply about solving the right problems the right way, and wants to work with a humble, sharp team — we’d love to talk to you.
 
-[Apply here to our open roles](https://www.linkedin.com/posts/activity-7307328157898919936-zHMp). Let’s shape what comes next, together.
+[Apply here to our open roles](https://www.linkedin.com/jobs/view/4079085185/?refId=2%2BWfAdopQkiNJNjhVt5Taw%3D%3D&trackingId=2%2BWfAdopQkiNJNjhVt5Taw%3D%3D). Let’s shape what comes next, together.
