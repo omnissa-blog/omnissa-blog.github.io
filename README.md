@@ -34,3 +34,8 @@ Alternatively share the content in markdown format to moderators/owners of this 
 Author info like name, email and avatar image needs to be added for publishing an article.
 1. Add author info to [_config.yml](_config.yml) under `authors` section referring to existing entries.
 2. Avatar images are stored under [assets/images/avatar/](assets/images/avatar/)
+
+## Review Process
+Once a pull request is opened against the develop branch, people listed in the [CODEOWNERS](.github/CODEOWERS) file will be notified to review the open PR. Please contact Parag if you wish to assist with reviewing content before it is published.
+
+
