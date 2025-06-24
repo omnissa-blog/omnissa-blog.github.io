@@ -36,6 +36,6 @@ Author info like name, email and avatar image needs to be added for publishing a
 2. Avatar images are stored under [assets/images/avatar/](assets/images/avatar/)
 
 ## Review Process
-Once a pull request is opened against the develop branch, people listed in the [CODEOWNERS](.github/CODEOWERS) file will be notified to review the open PR. Please contact Parag if you wish to assist with reviewing content before it is published.
+Once a pull request is opened against the develop branch, people listed in the [CODEOWNERS](.github/CODEOWNERS) file will be notified to review the open PR. Please contact Parag if you wish to assist with reviewing content before it is published.
 
 
