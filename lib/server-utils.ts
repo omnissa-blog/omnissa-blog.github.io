@@ -20,5 +20,5 @@ export async function getAllPosts() {
         return { slug, metadata };
       })
   );
-  return posts;
+  return posts.filter((post) => !post.metadata.hidden);
 }
