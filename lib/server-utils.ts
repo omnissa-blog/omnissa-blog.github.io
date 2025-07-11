@@ -20,5 +20,5 @@ export async function getAllPosts() {
         return { slug, metadata };
       })
   );
-  return posts.filter((post) => !post.metadata.hidden);
+  return posts.filter((post) => !post.metadata.hidden).sort((p1, p2) => new Date(p2.metadata.date).getTime() - new Date(p1.metadata.date).getTime());
 }
