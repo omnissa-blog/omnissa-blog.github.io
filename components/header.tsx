@@ -2,6 +2,8 @@ import { getAllPosts } from "@/lib/server-utils";
 import Link from "next/link";
 import OmnissaLogo from "./omnissa-logo";
 import PostSearchBox from "./post-search-box";
+import { Button } from "./ui/button";
+import { Bell, PenTool } from "lucide-react";
 
 export async function Header() {
   const posts = await getAllPosts();
@@ -23,22 +25,27 @@ export async function Header() {
 
         {/* Actions */}
         <div className="flex items-center space-x-4">
-          {/* <Link href="/write">
+          <Link href="https://www.omnissa.com/about-us/" target="_blank">
             <Button
               variant="ghost"
               size="sm"
               className="hidden sm:flex items-center space-x-2"
             >
-              <PenTool className="h-4 w-4" />
-              <span>Write</span>
+              <span>About</span>
             </Button>
           </Link>
 
-          <Button variant="ghost" size="sm" className="hidden sm:flex">
-            <Bell className="h-4 w-4" />
-          </Button>
+          <Link href="https://www.omnissa.com/careers/" target="_blank">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:flex items-center space-x-2"
+            >
+              <span>Careers</span>
+            </Button>
+          </Link>
 
-          <DropdownMenu>
+          {/* <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
