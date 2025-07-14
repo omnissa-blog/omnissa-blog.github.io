@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import {
   Outfit,
   Playfair_Display,
-  Source_Code_Pro,
-  Noto_Sans_JP,
+  Source_Code_Pro
 } from "next/font/google";
 import { Header } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -18,10 +17,7 @@ const sans = Outfit({
   weight: ["100", "200", "300", "400"],
 });
 
-const serif = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-serif",
-});
+const serif = sans;
 
 const mono = Source_Code_Pro({
   subsets: ["latin"],

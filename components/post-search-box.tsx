@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { PostMetadata } from "@/types";
-import { getAllPosts } from "@/lib/server-utils";
+import { Search } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 interface PostSearchResult {
   slug: string;
@@ -52,13 +51,16 @@ export default function PostSearchBox({ posts: allPosts }: { posts: any[] }) {
       <input
         ref={inputRef}
         type="text"
-        className="pl-10 bg-gray-100 border-0 focus:bg-white focus:ring-2 focus:ring-primary/20 w-full rounded-md py-2 px-3 text-sm"
+        className="pr-10 bg-gray-100 focus:bg-white focus:ring-2 focus:ring-foreground w-full rounded-md py-2 px-3 text-sm"
         placeholder="Search..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setShowDropdown(results.length > 0)}
         autoComplete="off"
       />
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground pointer-events-none">
+        <Search className="w-6 h-6" />
+      </span>
       {showDropdown && (
         <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
           {results.length === 0 ? (
