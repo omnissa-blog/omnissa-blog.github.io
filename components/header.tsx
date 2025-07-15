@@ -10,7 +10,7 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-xs">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center flex-wrap justify-between gap-3">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-4">
           <OmnissaLogo className="text-foreground" width={178} height={32} />
@@ -19,7 +19,7 @@ export async function Header() {
         </Link>
 
         {/* Search */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
+        <div className="flex flex-1 min-w-52 max-w-md">
           <PostSearchBox posts={posts} />
         </div>
 
@@ -29,7 +29,7 @@ export async function Header() {
             <Button
               variant="ghost"
               size="sm"
-              className="hidden sm:flex items-center space-x-2"
+              className="flex items-center space-x-2"
             >
               <span>About</span>
             </Button>
@@ -39,7 +39,7 @@ export async function Header() {
             <Button
               variant="ghost"
               size="sm"
-              className="hidden sm:flex items-center space-x-2"
+              className="flex items-center space-x-2"
             >
               <span>Careers</span>
             </Button>
