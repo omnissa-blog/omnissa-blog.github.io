@@ -1,7 +1,7 @@
 export const metadata = {
   layout: "post",
   title: "Omnissa Intelligence",
-  date: "2025-06-03",
+  date: "2025-07-12",
   categories: ["analytics", "datascience"],
   author: "pkadu",
   image: "/assets/images/posts/2025/intel-overview.png",
@@ -11,27 +11,36 @@ export const metadata = {
 };
 
 ## What is Omnissa Intelligence?
-
 Omnissa Intelligence is a cloud-native platform designed to unify and analyze telemetry across digital workspaces, providing actionable insights that drive efficiency, security, and user satisfaction. By aggregating data from various sources — including devices, applications, and user interactions — it enables organizations to monitor digital workspace metrics, proactively identify issues, and automate remediation processes.
 
-- Aggregates and correlates data from multiple sources for actionable insights
-- Leverage dashboards/reports/automations for optimized IT operations
-- Enhance employee productivity and engagement by monitoring digital workspace metrics that impact user experience
-- Leverage machine learning models to gain deep insights across your digital workspace
-
-Built on a scalable architecture hosted on Amazon Web Services (AWS), Omnissa Intelligence leverages machine learning models to assess user risk scores based on activity and device context. This facilitates a zero-trust security approach, ensuring continuous verification and compliance across the enterprise.
-
-The platform’s impact is evident across various industries. For instance, West Midlands Police utilized Omnissa Intelligence to enhance mobility and productivity for their officers, while Rentokil Initial successfully migrated 12,000 iOS devices to Workspace ONE in just three months, streamlining their operations
+* Aggregates and correlates data from multiple sources for actionable insights
+* Leverage dashboards/reports/automations for optimized IT operations
+* Enhance employee productivity and engagement by monitoring digital workspace metrics that impact user experience
+* Leverage machine learning models to gain deep insights across your digital workspace
 
 With a customer base spanning over 26,000 organizations worldwide, Omnissa Intelligence continues to be a trusted solution for enterprises seeking to optimize their digital work environments.
 
-## Data Sources
+## Technical Overview
+Intelligence is the data lake of Omnissa Digital Workspace Platform
+* It is a cloud native service, hosted on Amazon Web Services (AWS)
+* Highly scalable, available & microservices based modern architecture
+* Over 75+ microservices and 40+ lambdas
+* CICD Pipeline- Biweekly Release allowing new features and functionality to be released with greater speed and frequency.
+* Tech Stack - Java, Spring, AWS
+* Current Load: 15+ Billion events per day, 20TB+ of data per day, 10k+ Customer
 
+
+## High Level Architecture
+![Omnissa Intelligence Architecture](../assets/images/posts/2025/Intel-HLD.png "Omnissa Intelligence Architecture")
+Intelligence has a microservices-based architecture that is designed to be highly scalable and resilient. It leverages AWS services such as Amazon S3 for data storage, Amazon Kinesis for real-time data streaming, and Amazon SageMaker for machine learning model training and inference.
+
+
+## Data Sources
 Workspace ONE Intelligence receives and stores data from a number of sources
-![Data Sources](/assets//images/posts/2025/intel-data-sources.png "Data Sources")
+![Data Sources](../assets/images/posts/2025/intel-data-sources.png "Data Sources")
+
 
 ## Join Us at Omnissa Intelligence
-
 If solving deep technical challenges like these excites you, we’re building the kind of team you’ll want to be a part of.
 
 Omnissa Intelligence is actively hiring senior engineers who are passionate about distributed systems, security, observability, and cloud-native architecture. Whether it’s redesigning how modern authentication works at scale, securing data across global tenants, or rethinking how insights are delivered in real-time etc — these are the kinds of problems we tackle every day.
