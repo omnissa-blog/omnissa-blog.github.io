@@ -25,7 +25,7 @@ export const AUTHORS: Record<string, Author> = {
   ashroti: {
     name: "Aditya Shrotri",
     display_name: "Aditya Shrotri",
-    avatar: "/assets/images/avatar/ashroti-avatar.png",
+    avatar: "/assets/images/avatar/ashrotri-avatar.png",
     email: "ashrotri@omnissa.com",
   },
   jbedient: {

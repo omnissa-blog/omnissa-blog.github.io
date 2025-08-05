@@ -1,0 +1,77 @@
+---
+layout: post
+title: Debugging a Memory Leak in a .NET Framework Windows Service
+date: 2025-08-05
+categories:
+  - engineering
+author: ashrotri
+image: /assets/images/posts/2025/dotnet-memory-leak-1.webp
+featured: false
+description: >
+  A few months back, our team observed a memory leak in Windows service while performance testing our APIs with burst load of HTTP requests. The issue was caught and fixed in time, as its impact was critical to our resource consumption. The following post covers our journey in reproducing the memory leak at fault, as well as our analysis of the dump file using diagnostic tools and our eventual fix that resolved the problem. I’ll finish with key takeaways from this journey.
+---
+
+A few months back, our team observed a memory leak in Windows service while performance testing our APIs with burst load of HTTP requests. The issue was caught and fixed in time, as its impact was critical to our resource consumption. The following post covers our journey in reproducing the memory leak at fault, as well as our analysis of the dump file using diagnostic tools and our eventual fix that resolved the problem. I’ll finish with key takeaways from this journey.
+
+## Problem
+While testing the performance improvements around other areas of an application, it was observed that a specific .NET framework based Windows service creeps up in terms of memory usage (~2.4GB and increasing) over a period of time. This may prove catastrophic in production environments. It was consuming 2.5–3x of resources that I normally expect, and this was going up linearly with time.
+
+One thing I considered was that high memory usage does not always mean there is a memory leak. Some processes might require high resource consumption based on allocated threads for processing the requests. There should also be a baseline benchmark associated with resource consumption. Periodic memory tests will show if there is any increase in resource consumption which can correlate to any new changes made to the service. Even if resource consumption has gone above the established threshold without releasing resources, it is still a memory leak. Here, in this case the core issue was a linear increase in usage, which did not return to the normal baseline after operations completed.
+
+## Setup
+I used CPU, memory and database configuration similar to our production setup. It is of the highest importance that troubleshooting happens on machines of similar configuration to provide us best chance to fix the underlying memory issue.
+
+## Troubleshooting
+Normally, when I start to troubleshoot an issue, I immediately pull our logs, but in this case I realized quickly this would not be enough due to absence of any relevant debug/error records. This time, our process went as follows:
+
+As a part of continuing troubleshooting, I collected a memory dump and dot memory trace for the affected Windows service.
+I also collected dotTrace to get an insight into the latencies of individual methods being called in the flow.
+To solve this issue, it was important for us to reproduce this on a performance testing environment as well as on a local machine which directed us to the exact bug and intended fix.
+
+I used dotTrace, dotMemory and DebugDiag for troubleshooting. There are also other free tools that you can use like PerfView. The collected *.dmp file was run through DebugDiag to find if there are any waits on stored procedures keeping SQL connections open eventually leaking the memory over the period of time. I selected Default and Memory Pressure Analyzers for analyzing the *.dmp file. Once the analysis is done, it creates a report with all the information related to waiting/blocking threads.
+
+![The starting page of DebugDiag](/assets//images/posts/2025/dotnet-memory-leak-1.webp "The starting page of DebugDiag")
+
+I also went through the dotMemory memory snapshot and found that .NET CLR is not releasing memory which has an internal cache for Microsoft.Csharp.RuntimeBinder objects. You can see around 1.4GB of memory as retained bytes via Microsoft.Csharp.RuntimeBinder objects.
+
+![Referenced objects and retained bytes.](/assets//images/posts/2025/dotnet-memory-leak-2.webp "Referenced objects and retained bytes.")
+
+![The starting page of dotmemory snapshot with largest size objects](/assets//images/posts/2025/dotnet-memory-leak-3.webp "The starting page of dotmemory snapshot with largest size objects")
+
+![A pie-chart with Runtime Binder showing retained bytes.](/assets//images/posts/2025/dotnet-memory-leak-4.webp "A pie-chart with Runtime Binder showing retained bytes.")
+
+![A snapshot showing dotTrace](/assets//images/posts/2025/dotnet-memory-leak-5.webp "A snapshot showing dotTrace")
+
+DotTrace indicated the affected code through which it was using Microsoft.Csharp.RuntimeBinder related code.
+
+## Reproducing the memory leak
+While looking into this, I also came across similar issues were reported around Microsoft.Csharp.RuntimeBinder.
+
+- https://github.com/dotnet/roslyn/issues/2887
+
+- https://github.com/dotnet/runtime/issues/18655
+
+It was fixed in following PR in .NET corefx.
+
+- https://github.com/dotnet/corefx/pull/15397
+
+I took this opportunity to build a small utility to see if I can reproduce this in an stand-alone app considering current nature of application is complex and to rule out other possible factors like shared code and static variables, or other issues causing this.
+
+I ran the same test for ‘net48’ and ‘netcoreapp3.1’. I observed that high memory usage (~40MB and going up) and creeps up over the time for net48. For netcoreapp3.1, memory usage remains constant around 20MBs.
+
+Please refer to the screenshots below.
+
+Net48
+
+![Memory Usage keeps growing over period for net48 app.](/assets//images/posts/2025/dotnet-memory-leak-6.webp "Memory Usage keeps growing over period for net48 app.")
+
+Netcoreapp3.1
+
+![Memory Usage is stable over period for netCoreApp3.1 app.](/assets//images/posts/2025/dotnet-memory-leak-7.webp "Memory Usage is stable over period for netCoreApp3.1 app.")
+
+The issue was fixed by replacing Microsoft.Csharp.RuntimeBinder with an implementation of IDictionary. The test application confirmed constant memory usage for this change and in performance testing set up. The same fix was applied in production.
+
+## Key Takeaways
+- Don’t wait until the last moment and keep doing periodic performance analysis using memory dumps, dotTrace, dotMemory. You’ll be surprised by what you find in the details.
+- Set up continuous monitoring and collect important metrics like CPU, memory etc. with alerts, to keep on your toes and act quickly when a crisis happens.
+- Build familiarity/proficiency with performance diagnostics tools like dotTrace, dotMemory, PerfView, DebugDiag etc. as they will help in reducing turnaround time in tackling complex performance related critical issues/escalations.
