@@ -16,7 +16,7 @@ is required.
 3. Clone this repo, create a feature branch, write the blog. 
 4. Create a PR against `develop` branch
 
-**Sample PR** -  https://github.com/omnissa-blog/omnissa-blog.github.io/pull/1 
+**Sample PR** -  https://github.com/omnissa-blog/omnissa-blog.github.io/pull/15
 
 ## Getting Started
 There are 2 default branches - `develop` & `main`. The content from `main` branch is auto deployed & gets live via workflow action `Deploy Next.js site to Pages`.  
@@ -42,7 +42,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - `npm run build`: Builds the application for production.
 - `npm run start`: Starts the production server.
 - `npm run lint`: Lints the code.
-- 
+
 ## Publish a blog by sharing the markdown content
 Alternatively share the content in markdown format to moderators/owners of this repo and we can get it published for you. This is the easiest option as doesn't require setting up the additional GitHub account.
 
