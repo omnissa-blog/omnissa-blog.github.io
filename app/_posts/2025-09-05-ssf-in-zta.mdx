@@ -21,8 +21,7 @@ By enabling interoperability between different vendors and platforms, SSF transf
 
 ---
 
-## Case Studies
-
+## SSF Adoption at Omnissa
 
 
 ### Omnissa–Okta Integration
@@ -49,16 +48,50 @@ The integration of **Apple Business Manager (ABM)** with Omnissa’s Workspace O
 
 ---
 
-### Cloudflare–Okta Integration
-Cloudflare and Okta have implemented SSF-driven integrations that enable **continuous evaluation of user sessions**.  
-- **Use Case:** When Okta detects suspicious login behavior (e.g., impossible travel), it shares that event with Cloudflare Access in near real-time.  
-- **Outcome:** Cloudflare can immediately revoke or challenge the session without waiting for manual intervention.  
-- **Value:** This reduces dwell time for threats, enforces adaptive access policies, and ensures alignment with Zero Trust principles of least privilege and continuous verification.  
+# Engineering Challenges in Implementing SSF
+
+While the Shared Signals Framework (SSF) has proven to be a powerful enabler of Zero Trust, its implementation came with several engineering challenges that required careful architectural and strategic decisions.
+
+## 1. Service Placement and Workflow Integration
+
+One of the earliest and most critical decisions was determining where the Shared Signals Service (SES) should reside within the broader security architecture. The debate centered around whether it should be part of the Intelligence layer or the Access layer, and whether to build it as a standalone service or leverage existing workflows.
+
+### SES Overview
+
+SES is about low-latency routing of security events from/to external partners to EUC products using the Shared Signals Framework specification. While it looks similar to the Intelligence data framework in some aspects, it differs significantly in others. The admin configuration, latency requirements, and the need to provide a customer-facing external interface per the SSF spec(s) are all unique to the service. These aspects represent new functionality regardless of the environment in which the service is deployed.
+
+### Decision
+
+After evaluating multiple options, we chose to build on top of existing Workspace ONE Intelligence workflows. This decision allowed us to:
+
+- Accelerate development by reusing mature components  
+- Maintain consistency across services  
+- Reduce operational overhead  
+
+### Deployment Considerations
+
+Deploying the SES service backend in Access will provide the following benefits:
+
+- The service can use the Access infrastructure to build and deploy the microservice  
+- It can leverage existing Access services and dependencies (e.g., database, crypto, messaging, distributed cache, feature flag, configuration)  
+- It can utilize common layer libraries (e.g., Vert.x, rate limiting, authentication)
+
+
+## 2. Protocol Versioning and Compatibility
+
+Another major challenge was supporting multiple versions of the SSF specification and CAEP protocol, especially as the protocol evolved from early drafts to more stable releases. For example, Okta initially supported Draft 1, which had significant differences from later versions.
+
+To address this, we had to:
+
+- Build version-aware parsers and handlers that could interpret and normalize signals across different CAEP versions  
+- Maintain backward compatibility while ensuring forward adaptability as new protocol features emerged  
+- Implement robust testing frameworks to validate behavior across protocol versions and vendor implementations  
 
 ---
 
 ## Broader Ecosystem Adoption
 Beyond these specific integrations, SSF adoption is growing across the security ecosystem:  
+- **Cloudflare–Okta Integration** Cloudflare and Okta have implemented SSF-driven integrations that enable continuous evaluation of user sessions.  
 - **Google** leverages SSF/CAEP flows for continuous risk-based access in Google Workspace.  
 - **IBM** integrates SSF/CAEP into identity and access management offerings to enable real-time trust scoring.  
 - **SailPoint** uses SSF/CAEP for identity governance, ensuring that entitlements are continuously validated against risk signals.  
