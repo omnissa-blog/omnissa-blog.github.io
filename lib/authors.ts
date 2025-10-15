@@ -50,4 +50,10 @@ export const AUTHORS: Record<string, Author> = {
     twitter: "https://twitter.com/wowthemesnet",
     description: "This is the author box. Write a short description of the author here.",
   },
+  jmo: {
+    name: "Jeff Moroski",
+    display_name: "Jeff Moroski",
+    avatar: "/assets/images/avatar/jmo-avatar.jpg",
+    email: "jmoroski@omnissa.com",
+  },
 };
