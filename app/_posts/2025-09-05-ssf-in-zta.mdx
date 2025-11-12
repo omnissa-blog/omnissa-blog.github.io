@@ -23,69 +23,146 @@ By enabling interoperability between different vendors and platforms, SSF transf
 
 ## SSF Adoption at Omnissa
 
-
-### Omnissa–Okta Integration
-Omnissa and Okta extend SSF to unify **identity** and **endpoint posture** in Zero Trust.  
-- **Use Case:** If Workspace ONE UEM identifies a compromised or non-compliant device, it sends a device compliance CAEP signal via SSF to Okta. Okta admin can define a policy to act on the signal like requiring step-up authentication or revoke access.  
-- **Outcome:**  
-  - Faster incident response through automated risk signal exchange.  
-  - Reduced friction for end-users, since only high-risk events trigger additional checks instead of always triggering additonal checks.  
-- **Value:** Combines device security and identity management into a single adaptive trust layer.  
+- **Omnissa–Okta Integration**: Omnissa and Okta extend SSF and CAEP to unify identity and endpoint posture in Zero Trust by enabling real-time risk signal exchange—so when Workspace ONE UEM flags a compromised device, Okta can instantly enforce adaptive policies like step-up authentication or access revocation, reducing friction while accelerating incident response.
+- **Omnissa-Apple Business Manager Integration**: By integrating Apple Business Manager with Omnissa Workspace ONE and leveraging SSF and CAEP credential change events, enterprises can enforce Zero Trust by instantly revoking iCloud sessions and logging users out upon identity posture changes, while maintaining zero-touch enrollment, real-time compliance, and adaptive access across Apple devices. 
 
 ---
 
-### Omnissa-Apple Business Manager Integration
-The integration of **Apple Business Manager (ABM)** with Omnissa’s Workspace ONE strengthens Zero Trust at the device onboarding layer.  
-- **Use Case:**  
-  - New Apple devices (Macs, iPhones, iPads etc.) automatically enroll through ABM.  
-  - Workspace ONE UEM applies compliance policies (encryption, OS updates, passcode requirements) via Apple’s Declarative Device Management (DDM).  
-  - Workspace ONE Access acting as Identity Provider, transmits security signals to Apple Business Manager, which can take immediate conditional access decisions.
-- **Outcomes:**  
-  - **Efficiency:** Zero-touch enrollment and policy enforcement across large Apple fleets.  
-  - **Security:** Compliance issues are surfaced in near real-time, enabling immediate conditional access decisions.  
-  - **Scalability:** Large enterprises gain centralized visibility and automated risk response for Apple devices.  
-- **Value:** Establishes a strong Zero Trust foundation by combining device posture with identity-based adaptive access.  
+## What is SSF and CAEP?
+- **SSF (Shared Signals Framework)**: An OpenID Foundation standard for interoperability between vendors. It uses **Security Event Tokens (SETs)** as defined in [RFC 8417](https://www.rfc-editor.org/info/rfc8417).
+- **CAEP (Continuous Access Evaluation Protocol)**: A profile of SSF focused on session risk evaluation. It enables actions like revoking tokens or enforcing step-up authentication when risk changes.
+
+**Example CAEP Event (device compliance):**
+```json
+{
+    "iss": "https://idp.example.com/123456789/",
+    "jti": "24c63fb56e5a2d77a6b512616ca9fa24",
+    "iat": 1615305159,
+    "aud": "https://sp.example.com/caep",
+    "txn": 8675309,
+    "sub_id": {
+        "format": "complex",
+        "device": {
+            "format": "iss_sub",
+            "iss": "https://idp.example.com/123456789/",
+            "sub": "e9297990-14d2-42ec-a4a9-4036db86509a"
+        },
+        "tenant": {
+            "format": "opaque",
+            "id": "123456789"
+        }
+    },
+    "events": {
+        "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change": {
+            "current_status": "not-compliant",
+            "previous_status": "compliant",
+            "initiating_entity": "policy",
+            "reason_admin": {
+                "en": "Location Policy Violation: C076E8A3"
+            },
+            "reason_user": {
+                "en": "Device is no longer in a trusted location."
+            },
+            "event_timestamp": 1615304991643
+        }
+    }
+}
+```
 
 ---
 
-# Engineering Challenges in Implementing SSF
+## Omnissa’s Implementation Vision
+The **Security Events Service (SES)** is designed as an **independent microservice**, not embedded within Access or UEM, but built on top of Omnissa’s platform services like:
+- **Crypto** (secure token signing and verification),
+- **Messaging** (event distribution),
+- **Distributed Cache** (low-latency lookups),
+- **Feature Flags & Config Management**.
 
-While the Shared Signals Framework (SSF) has proven to be a powerful enabler of Zero Trust, its implementation came with several engineering challenges that required careful architectural and strategic decisions.
+### Why Independent?
+The vision is clear: SES understands **SSF and CAEP protocols** so that **none of the Omnissa products (UEM, Intelligence, Access)** need to implement protocol logic. They simply forward events to SES, which:
+- Normalizes signals,
+- Handles partner-specific transformations,
+- Manages event streams and subscriber configurations.
 
-## 1. Service Placement and Workflow Integration
+**Integration Flow:**
+- **Sources**: UEM (device compliance), Intelligence (risk analytics), Access (identity events).
+- **SES**: Converts these into SSF-compliant signals.
+- **Partners**: Okta, Ping, Apple Business Manager consume via CAEP streams.
 
-One of the earliest and most critical decisions was determining where the Security Events Service (SES) should reside within the broader security architecture. The debate centered around whether it should be part of the Intelligence layer or the Access layer, and whether to build it as a standalone service or leverage existing workflows.
+---
 
-### SES Overview
+## Bootstrapping Flow
+1. Admin adds a partner in SES UI.
+2. System generates:
+   - **Issuer URL**: `https://<tenant>/ses/issuer/<partner>`
+   - **OAuth2 client** with `ssf.read` and `ssf.manage` scopes.
+3. Partner uses these credentials to configure event streams via SSF APIs.
 
-SES is about low-latency routing of security events from/to external partners to EUC products using the Shared Signals Framework specification. While it looks similar to the Intelligence data framework in some aspects, it differs significantly in others. The admin configuration, latency requirements, and the need to provide a customer-facing external interface per the SSF spec(s) are all unique to the service. These aspects represent new functionality regardless of the environment in which the service is deployed.
+---
 
-### Decision
+## Engineering Challenges & Solutions
+### 1. Signal Routing
+- **Option A**: Source sends partner-specific signals.
+  - Pro: No SES complexity.
+  - Con: Higher API overhead.
+- **Option B**: SES transforms signals per partner.
+  - Pro: Single source → SES call.
+  - Con: SES must manage partner-specific content rules.
+**Omnissa chose Option B for scalability.**
 
-After evaluating multiple options, we chose to build on top of existing Workspace ONE Intelligence workflows. This decision allowed us to:
+### 2. Queueing for Scale
+Spikes happen—e.g., a UEM compliance policy change can trigger thousands of events. We evaluated:
+- **SQS**: Simple, per-stream queues, but limited batch size.
+- **RDS**: Full control, but heavy operational overhead.
+- **Kafka**: Chosen for MVP due to:
+  - High throughput.
+  - Sovereign cloud flexibility.
+  - Support for consumer groups for scaling.
 
-- Accelerate development by reusing mature components  
-- Maintain consistency across services  
-- Reduce operational overhead  
+### 3. Protocol Versioning
+CAEP evolved from Draft 1 to stable spec. Solution:
+- Version-aware parsers.
+- Backward compatibility layers.
+- Automated regression tests across vendor implementations.
 
-### Deployment Considerations
+### 4. Authentication & Scopes
+- Introduced `ssf.read` and `ssf.manage` scopes for SSF APIs.
+- Enforced **client_credentials** flow for subscribers.
 
-Deploying the SES service backend in Access will provide the following benefits:
+---
 
-- The service can use the Access infrastructure to build and deploy the microservice  
-- It can leverage existing Access services and dependencies (e.g., database, crypto, messaging, distributed cache, feature flag, configuration)  
-- It can utilize common layer libraries (e.g., Vert.x, rate limiting, authentication)
+## APIs and Developer Experience
+Omnissa exposed SSF-compliant APIs for partners:
+
+### Discovery
+```http
+GET /.well-known/ssfconfiguration/secevents/ssf/subscribers/{id}
+```
+
+### Create Stream
+```http
+POST /secevents/ssf/subscribers/{id}/stream
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "delivery": {
+    "method": "urn:ietf:rfc:8935",
+    "endpoint_url": "https://partner.example.com/events"
+  },
+  "events_requested": [
+    "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change"
+  ]
+}
+```
+
+### Status & Verification
+```http
+GET /secevents/ssf/subscribers/{id}/status
+POST /secevents/ssf/subscribers/{id}/verify
+```
 
 
-## 2. Protocol Versioning and Compatibility
-
-Another major challenge was supporting multiple versions of the SSF specification and CAEP protocol, especially as the protocol evolved from early drafts to more stable releases. For example, Okta initially supported Draft 1, which had significant differences from later versions.
-
-To address this, we had to:
-
-- Build version-aware parsers and handlers that could interpret and normalize signals across different CAEP versions  
-- Maintain backward compatibility while ensuring forward adaptability as new protocol features emerged  
-- Implement robust testing frameworks to validate behavior across protocol versions and vendor implementations  
 
 ---
 
