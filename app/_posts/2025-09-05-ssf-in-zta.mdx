@@ -72,14 +72,14 @@ By enabling interoperability between different vendors and platforms, SSF transf
 ---
 
 ## Omnissa’s Implementation Vision
-The **Security Events Service (SES)** is designed as an **independent microservice**, not embedded within Access or UEM, but built on top of Omnissa’s platform services like:
+The **Security Events Service (SES)** centralizes configurations and security event routing across Omnissa products. It is designed as an **independent microservice**, not embedded within Access or UEM, but built on top of Omnissa’s platform services like:
 - **Crypto** (secure token signing and verification),
 - **Messaging** (event distribution),
 - **Distributed Cache** (low-latency lookups),
 - **Feature Flags & Config Management**.
 
 ### Why Independent?
-The vision is clear: SES understands **SSF and CAEP protocols** so that **none of the Omnissa products (UEM, Intelligence, Access)** need to implement protocol logic. They simply forward events to SES, which:
+The vision is clear: SES understands **SSF and CAEP protocols** so that **none of the Omnissa products (UEM, Intelligence, Access)** need to implement protocol logic.  They simply forward events to SES, which:
 - Normalizes signals,
 - Handles partner-specific transformations,
 - Manages event streams and subscriber configurations.
@@ -94,7 +94,7 @@ The vision is clear: SES understands **SSF and CAEP protocols** so that **none o
 ## Bootstrapping Flow
 1. Admin adds a partner in SES UI.
 2. System generates:
-   - **Issuer URL**: `https://<tenant>/ses/issuer/<partner>`
+   - **Partner specific well-known URL**: `https://<tenant>/.well-known/ssf-configuration/ssf/subscribers/<partner id>`
    - **OAuth2 client** with `ssf.read` and `ssf.manage` scopes.
 3. Partner uses these credentials to configure event streams via SSF APIs.
 
