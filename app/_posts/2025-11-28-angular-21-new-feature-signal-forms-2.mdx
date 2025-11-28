@@ -1,16 +1,16 @@
 export const metadata = {
   layout: "post",
   title: "Angular Signal Forms Series: Key Features of Signal Forms",
-  date: "2025-11-25",
+  date: "2025-11-28",
   categories: ["engineering"],
   author: "wtian",
   image: "/assets/images/posts/2025/angular-21-new-feature-signal-forms-2.webp",
   featured: false,
   description:
-    "Angular introduced long-waited Signal Forms in v21. Let's take a look at what the new features are and how to achieve real-world cases like complex validators, nested forms and custom form controls.",
+    "Angular introduced the long-awaited Signal Forms in v21. Let's take a look at the new features and how to achieve real-world cases like complex validators, nested forms, and custom form controls.",
 };
 
-Angular introduced long-waited Signal Forms in v21. Let's explore the advanced features and learn how to implement complex validators, nested forms, and custom form controls in real-world applications.
+Angular introduced the long-awaited Signal Forms in v21. Let's explore the advanced features and learn how to implement complex validators, nested forms, and custom form controls in real-world applications.
 
 Throughout this article, we'll build a comprehensive user registration form that demonstrates key Signal Forms capabilities:
 
@@ -27,7 +27,7 @@ Schemas enable you to define reusable validation logic that can be consistently 
 
 ## Single Field Schema
 
-Define schemas for individual fields that can be reused anywhere in your application. The following example demonstrates creating reusable `nameSchema` that can validate any name field across different forms:
+Define schemas for individual fields that can be reused anywhere in your application. The following example demonstrates creating a reusable `nameSchema` that can validate any name field across different forms:
 
 ```typescript
 const nameSchema: Schema<string> = schema((path) => {
@@ -80,7 +80,7 @@ userForm = form<User>(this.user, (path) => {
 
 ## Array Schema
 
-For forms containing arrays of items, use `applyEach` to apply validation schemas to each element in the collection. This ensures consistent validation across all array items. To add validation to user preferences, each preference item need to apply the same validation:
+For forms containing arrays of items, use `applyEach` to apply validation schemas to each element in the collection. This ensures consistent validation across all array items. To add validation to user preferences, each preference item needs to apply the same validation:
 
 ```typescript
 userForm = form<User>(this.user, (path) => {
@@ -94,7 +94,7 @@ userForm = form<User>(this.user, (path) => {
 
 ## Built-in Validators
 
-Signal Forms include a comprehensive set of validators for common validation scenarios. In above schema examples, built-in validations have been used. Each validator is type-safe and provides clear, customizable error messages:
+Signal Forms include a comprehensive set of validators for common validation scenarios. In the above schema examples, built-in validations have been used. Each validator is type-safe and provides clear, customizable error messages:
 
 - **`required(path.field)`** - Ensures the field has a value
 - **`email(path.field)`** - Validates email format
@@ -147,7 +147,7 @@ userForm = form<User>(this.user, (path) => {
 });
 ```
 
-Disabled reason can be got from the field state and displayed in the template:
+The disabled reason can be retrieved from the field state and displayed in the template:
 ```html
 @if (newUserForm.email().disabled()) {
   <div class="error-message">
@@ -321,7 +321,7 @@ In the parent form template, simply pass the form field to the nested component:
 
 # Custom Form Control
 
-While browser's built-in form controls (input, select, textarea) handle common cases, applications often require specialized inputs. Signal Forms seamlessly integrates with any component that implements specific control interfaces.
+While browsers' built-in form controls (input, select, textarea) handle common cases, applications often require specialized inputs. Signal Forms seamlessly integrates with any component that implements specific control interfaces.
 
 A control interface defines the properties and signals that enable your component to communicate with the form system. When your component implements these interfaces, the `[field]` directive automatically connects your control to form state, validation, and data binding.
 
@@ -388,6 +388,6 @@ For existing applications built on Reactive Forms, there's no immediate pressure
 **Resources for Learning More:**
 - [Angular Signal Forms Documentation](https://angular.dev/guide/forms/signal-forms)
 - [Angular Custom Controls](https://angular.dev/guide/forms/signals/custom-controls#)
-- [Signal Forms POC Repository](https://github.com/IrisTien/angular-signal-forms-poc) - to access the full POC example
+- [Signal Forms POC Repository](https://github.com/IrisTien/angular-signal-forms-poc) - Access the full POC example here.
 
 As Angular continues to evolve toward a fully signal-based architecture, Signal Forms represent not just a new way to handle forms, but a fundamental shift in how we build reactive, type-safe Angular applications. The future of forms in Angular is reactive by default, type-safe by design, and simpler than ever before.
