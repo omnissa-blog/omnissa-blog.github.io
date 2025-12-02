@@ -1,0 +1,238 @@
+export const metadata = {
+  layout: "post",
+  title: "Java Memory Usage: Making a Better Footprint",
+  date: "2025-10-10",
+  categories: ["java", "spring", "maven", "containers"],
+  author: "jmo",
+  image: "/assets/images/posts/2025/java-memory-preview-image.png",
+  featured: false,
+  description:
+    "Does Java resource usage suck as much as you think? Yes. Is there anything we can do about it? Maybe. This blog post compares the memory usage of a real-world Java and .NET service and proposes some ways to close the resource gap between the two.",
+};
+
+# Introduction
+This blog post starts with a fairly non-controversial statement–Java applications aren't great with memory consumption. We'll look at a real world
+Java service deployment built by the Freestyle team, and compare the overall memory usage of the container to a similar .NET service deployment.
+
+The comparison to .NET is not intended to start a flame war. Around 80% of existing UEM services are built in .NET. There are certainly reasons
+other than memory consumption to choose a technology, but this memory utilization difference _can_ put Java at a disadvantage when choosing the
+right tool for the job. I'm of the opinion that Java can be a great fit for building out UEM, and that the memory consumption is not an inherent
+problem, but rather a side effect of some fundamental application choices. If we can prove this to be true, then we can ensure we are making
+more informed decisions when building out new services.
+
+Opinions don't pay the bills, so we'll try to reason about why the Java service consumes the amount of memory that it does, and propose some steps
+to take to decrease the memory usage in the Freestyle service. To test and measure success, we'll establish a baseline service and make incremental
+changes to it based on our reasons and proposed steps.
+
+To wrap things up, we'll decide if any of our proposals should make their way into existing Java services. We'll establish a basic set of rules for
+building Java services with better memory utilization, and hopefully have some metrics to define what "better" actually means.
+
+Source code to accompany this blog is available at [jmoroski/spring-application-mem-usage](https://github.com/jmoroski/spring-application-mem-usage).
+
+# The Java Memory Impact: Visualization
+Let's start by taking a look at the Freestyle API Server:
+![Freestyle API Server deployed in Nomad](/assets/images/posts/2025/java-memory-service-usage-fs.png)
+
+We can see that the container running this service is using 758 MB of memory. We can compare that to a similar .NET service:
+![Desired State API Server deployed in Nomad](/assets/images/posts/2025/java-memory-service-usage-ds.png)
+
+This second service is using 442 MB of memory. Another way to say this is that the Java-based service is using 71.5% more memory than a comparable
+.NET service. This observation based on the above samples is fairly consistent when comparing other services in our control plane–memory
+usage is 60-72% higher in Java-based services.
+
+> **Note: We're looking specifically at container memory for the purpose of this exercise because that is ultimately what is important to capacity
+> planning, calculating resource usage, and costing in a managed environment.**
+
+# Explanations & Ideas
+It isn't very useful to try and answer the questions "why isn't Java memory usage the same as .NET?", or "how can I make Java memory usage the same
+as .NET?". It _is_ worth asking some other questions though:
+1. What is contributing to the memory usage in this Java application?
+2. Can we manage these contributing factors in a way that reduces the memory usage?
+
+I used to work with a guy that had an actual PhD in JVMs. He loved to talk about performance tuning, JVM tweaks, and "eden heap space". I am not that
+guy and I do not love those things. What I'm going to focus on is the unconstrained memory used by a Java application "at rest". It's not that JVM
+tuning isn't important. It's that there is another important step that should come first: understanding what an application is putting into memory,
+why it's putting it into memory, and how it's putting it into memory.
+
+Since it's not 2004, when we say "Java application" we realistically mean a Spring application. Why is this important? Because Spring is like
+the easy button for deploying a service that does anything meaningful: connect to data stores, interact with message brokers, serve APIs and web
+pages, publish metrics, etc. It does this by having a rich ecosystem of dependencies and extensibility, and by abstracting away much of the
+boilerplate from engineers. This ecosystem and boilerplate come with a cost. It certainly doesn't outweigh all the benefits, but it is important
+to understand those costs, and how to effectively manage them. We'll pause here to make a formal hypothesis that:
+> The Spring ecosystem and default application context (based on convention over configuration) contribute a larger than necessary memory cost to
+> Java applications
+
+If our hypothesis is true, then it stands to reason that we can make some changes that reduce the overall memory needs of our application.
+
+## Idea 1: Reduce Dependencies
+A Spring application is deployed with all of its dependencies. More dependencies means:
+* larger deployment
+* more classes loaded into memory (class loader)
+
+Instead of using the Spring Boot starter dependencies, we can be more explicit about what dependencies our application actually needs. This **isn't**
+an exercise in fully declaring each direct and transitive dependency; that effort is probably not worth the maintenance and inflexibility. This
+**is** explicitly opting into direct dependencies based on functional need, not on bundling convenience.
+
+## Idea 2: Reduce Auto-configuration
+A Spring application creates and wires together beans for you. In the absence of guidance it will create and wire what it thinks you need, often based
+on what's present in the application's classpath. This means that your application needs more memory for additional bean instances, and often
+additional proxies, thread pools, supporting classes, etc.
+
+By reducing the number of dependencies, we should see some immediate improvement in the memory usage of the application context. We can find even more
+improvements by choosing less "magical" annotations like `@SpringBootApplication` and `@EnableAutoConfiguration` in favor of more explicit directives
+like `@EnableWebMvc` and `@PropertySource`.
+
+## Idea 3: Run Classes, Not JARs
+This one is admittedly more esoteric, but it's super easy to test so it made the cut. Spring applications are distributed as fat JARs (a single JAR
+containing the JARs of all the application code and application dependencies). JVMs need more memory to load JARs (and JARs of JARs) because there is
+additional opening, decompressing, processing, zip indexing, etc. If we remove a layer of JAR, and launch the application entry point directly as a
+class, then we should use less memory.
+
+# Defining Baseline and Incremental Improvements
+## Baseline
+We want a baseline to be something that is a reasonable Java service. It isn't useful to publish a Java service that only consumes 17 MB if it
+doesn't do anything. Instead, we'll define a baseline to be a Java service that:
+1. Publishes metrics to StatsD
+2. Writes structured logs to the console
+3. Runs an embedded Tomcat server
+4. Handles API calls to 2 different endpoints.
+
+The baseline will take the typical Spring Boot approach of including starter dependencies and deploying a single fat JAR file.
+
+## Increment 1: Unwrapped JAR
+The first incremental improvement will be to extract the layers of the fat JAR to the filesystem and execute a Java class instead of a JAR file
+(Idea 3). There are no changes to product code. The Dockerfile is changed by adding a new layer to do the extraction:
+```dockerfile
+FROM almalinux AS builder
+
+# Docker things
+
+RUN java -Djarmode=layertools -jar application.jar extract
+
+# Docker things
+
+COPY --from=builder dependencies/ ./
+COPY --from=builder snapshot-dependencies/ ./
+COPY --from=builder spring-boot-loader/ ./
+COPY --from=builder application/ ./
+```
+and then changing the entrypoint from `java -jar app.jar` to `java org.springframework.boot.loader.launch.JarLauncher`
+
+## Increment 2: No Starters
+The second incremental improvement will be to remove the Spring Boot starter dependencies and explicitly declare the dependencies that we need
+(Idea 1). We'll also remove the auto-configuration annotations and replace them with more explicit annotations (Idea 2). We're essentially
+trading build time convenience for runtime efficiency. The dependencies section of the `pom.xml` file goes from this:
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-logging</artifactId>
+</dependency>
+```
+to this:
+```xml
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-webmvc</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.apache.tomcat.embed</groupId>
+    <artifactId>tomcat-embed-core</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>jul-to-slf4j</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-api</artifactId>
+</dependency>
+<dependency>
+    <groupId>ch.qos.logback</groupId>
+    <artifactId>logback-classic</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot</artifactId>
+</dependency>
+<!-- several more dependencies -->
+```
+
+## Increment 3: Unwrapped JAR, No Starters
+Nothing new here. This increment combines the changes from 1 and 2 for even <span className="text-2xl mx-1">👏</span>
+more <span className="text-2xl mx-1">👏</span> gains.
+
+# Results & Analysis
+<table className="min-w-full border border-gray-300 rounded-lg overflow-hidden">
+  <thead>
+    <tr>
+      <th>Build</th>
+      <th>Container Memory</th>
+      <th>Classes Loaded</th>
+      <th>Artifact Size</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr className="border-t">
+      <td className="px-4 py-2">Baseline</td>
+      <td className="px-4 py-2">297.8 MB (average) <br /> Low: 286 MB, High: 311 MB</td>
+      <td className="px-4 py-2">~9300</td>
+      <td className="px-4 py-2">28.8 MB</td>
+    </tr>
+    <tr className="border-t bg-gray-50">
+      <td className="px-4 py-2">Increment 1: Unwrapped JAR</td>
+      <td className="px-4 py-2">262 MB (average) <br />Low: 250 MB, High: 270 MB</td>
+      <td className="px-4 py-2">~9300</td>
+      <td className="px-4 py-2">28.8 MB</td>
+    </tr>
+    <tr className="border-t">
+      <td className="px-4 py-2">Increment 2: No Starters</td>
+      <td className="px-4 py-2">191.8 MB (average) <br />Low: 182 MB, High: 201 MB</td>
+      <td className="px-4 py-2">~6780</td>
+      <td className="px-4 py-2">21.5 MB</td>
+    </tr>
+    <tr className="border-t bg-gray-50">
+      <td className="px-4 py-2">Increment 3: Unwrapped, No Starters</td>
+      <td className="px-4 py-2">153 MB (average) <br />Low: 143 MB, High: 162 MB</td>
+      <td className="px-4 py-2">~6780</td>
+      <td className="px-4 py-2">21.5 MB</td>
+    </tr>
+  </tbody>
+</table>
+
+
+All of the proposed increments showed improvement over the baseline. The unwrapped JAR (Idea 3) showed a modest improvement of about 12%. The no
+starters increment (Ideas 1 & 2) showed a more significant improvement of about 36%. The combination of both ideas (Increment 3) showed the most
+improvement, with a total memory reduction of about 49% compared to the baseline.
+
+Suspecting that the benefits of unwrapping would increase as the application grew, I decided to apply this same technique to the Freestyle API
+Server. In a local container environment, the Freestyle memory usage averaged around 615 MB. After unwrapping the JAR, the memory usage dropped to an
+average of 497 MB, a reduction of about 19%. **Without a single code change**. Applying some of our other lessons to the Freestyle service will yield
+even greater reductions in memory consumption.
+
+# Conclusions & Next Steps
+* The Spring ecosystem and default application context do contribute a larger than necessary memory cost to Java applications.
+  * By being more explicit about our dependencies and application configuration, we can significantly reduce the memory footprint of a Java service.
+* The steps taken in this exercise are not particularly difficult or time-consuming. The benefits are significant, and they apply to all Spring services
+regardless of their size or complexity.
+  * The unwrapped JAR technique is especially appealing because it requires no code changes at all.
+* The Freestyle team will be applying these lessons to our existing Java services. We will start by unwrapping the JARs, and then we will look for
+opportunities to reduce dependencies and auto-configuration. We will measure the memory usage before and after each change to ensure that we are
+making progress towards our goal of better memory utilization.
+* We will also establish a set of guidelines for building new Java services that incorporate these lessons from the start. This will help us to avoid
+the pitfalls of the Spring ecosystem and ensure that our Java services are as efficient as possible.
+
+The goal was never to make Java services use the same amount of memory as .NET services. The goal is to make Java services use the least amount of
+memory possible while still being effective and maintainable. By following the steps outlined in this blog post, we can achieve that goal and make
+our Java services more delightful to build and maintain.
+
+This exercise does not take the place of proper JVM tuning and monitoring. It is a complementary step that should be taken before diving into the
+more complex world of JVM tuning. By starting with a leaner application, we can make the most of our JVM tuning efforts and achieve even better
+results.
