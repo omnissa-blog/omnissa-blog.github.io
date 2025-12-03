@@ -1,7 +1,7 @@
 export const metadata = {
   layout: "post",
   title: "Angular Signal Forms Series: Key Features of Signal Forms",
-  date: "2025-11-28",
+  date: "2025-12-03",
   categories: ["engineering"],
   author: "wtian",
   image: "/assets/images/posts/2025/angular-21-new-feature-signal-forms-2.webp",
@@ -274,7 +274,6 @@ Nested forms enable you to break down complex forms into reusable, maintainable 
 ```typescript
 @Component({
   selector: 'app-preferences',
-  standalone: true,
   imports: [CommonModule, Field, ReactiveFormsModule],
   templateUrl: './preferences.component.html',
   styleUrls: ['./preferences.component.scss'],
@@ -332,7 +331,6 @@ To access the field from the parent form, inject the `Field` directive. Calling 
 ```typescript
 @Component({
   selector: 'app-location-form',
-  standalone: true,
   imports: [CommonModule, Field],
   templateUrl: './location-form.component.html',
   styleUrls: ['./location-form.component.scss'],
