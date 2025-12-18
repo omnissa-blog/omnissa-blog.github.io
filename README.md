@@ -54,4 +54,12 @@ Author info like name, email and avatar image needs to be added for publishing a
 ## Review Process
 Once a pull request is opened against the develop branch, people listed in the [CODEOWNERS](.github/CODEOWNERS) file will be notified to review the open PR. Please contact Parag Kadu if you wish to assist with reviewing content before it is published.
 
+## Blog Guidelines
+* Describe the problem & engineering challenges and how you solved it
+* Highlight the latest & cool technologies, frameworks or skills used to solve the problem
+* Incorporate technical diagrams, screenshots, and charts to illustrate concepts
+* Good to include stats, metrics & data to make the article more credible
+* Less product descriptions or use-cases as it's suitable for marketing
+* No undocumented features or roadmap items
+* No product configurations, shortcuts or secret API's
 
