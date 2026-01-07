@@ -55,6 +55,7 @@ export const AUTHORS: Record<string, Author> = {
     display_name: "Kartik Patel",
     avatar: "/assets/images/avatar/kartikkumarp-avatar.png",
     email: "kartikkumarp@omnissa.com",
+  },
   wtian: {
     name: "Wei Tian",
     display_name: "Wei Tian",
