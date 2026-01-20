@@ -1,0 +1,196 @@
+export const metadata = {
+  layout: "post",
+  title: "Shared Signals Framework as a Core Enabler of Zero Trust Architecture",
+  date: "2026-01-07",
+  author: "kartikkumarp",
+  categories: ["Security", "engineering"],
+  tags: ["Shared Signals Framework", "CAEP", "RISC", "Security","Zero Trust"],
+  image: "/assets/images/posts/2025/ssf-in-zta-banner.png",
+  description:
+    "This article highlights the Shared Signals Framework (SSF) as a cornerstone of Zero Trust Architecture (ZTA), enabling continuous, near real-time collaboration between identity providers, security services, and applications. By standardizing how risk, policy, and event data are exchanged, SSF allows organizations to move beyond static access controls and toward adaptive, context-driven trust decisions.",
+  featured: false
+};
+
+
+## Introduction
+The **Shared Signals Framework (SSF)** and the standard signal protocols like CAEP are a critical component of modern **Zero Trust Architecture (ZTA)**. Zero Trust requires continuous validation of users, devices, and sessions based on near real-time context. Traditional, siloed security tools cannot exchange information quickly enough to respond to dynamic threats. SSF solves this problem by providing a standard way for identity providers, applications, and security services to share **risk, event, and policy signals** in near real-time.  
+
+By enabling interoperability between different vendors and platforms, SSF transforms Zero Trust from a theoretical principle into a **practical, enforceable, and scalable security model**.
+
+---
+
+## SSF Adoption at Omnissa
+
+- **Omnissa–Okta Integration**: Omnissa and Okta extend SSF and CAEP to unify identity and endpoint posture in Zero Trust by enabling real-time risk signal exchange—so when Workspace ONE UEM flags a compromised device, Okta can instantly enforce adaptive policies like step-up authentication or access revocation, reducing friction while accelerating incident response.
+- **Omnissa-Apple Business Manager Integration**: By integrating Apple Business Manager with Omnissa Workspace ONE and leveraging SSF and CAEP credential change events, enterprises can enforce Zero Trust by instantly revoking iCloud sessions and logging users out upon identity posture changes, while maintaining zero-touch enrollment, real-time compliance, and adaptive access across Apple devices. 
+
+---
+
+## What is SSF and CAEP?
+- **SSF (Shared Signals Framework)**: An OpenID Foundation standard for interoperability between vendors. It uses **Security Event Tokens (SETs)** as defined in [RFC 8417](https://www.rfc-editor.org/info/rfc8417).
+- **CAEP (Continuous Access Evaluation Protocol)**: A profile of SSF focused on session risk evaluation. It enables actions like revoking tokens or enforcing step-up authentication when risk changes.
+
+**Example CAEP Event (device compliance):**
+```json
+{
+    "iss": "https://idp.example.com/123456789/",
+    "jti": "24c63fb56e5a2d77a6b512616ca9fa24",
+    "iat": 1615305159,
+    "aud": "https://sp.example.com/caep",
+    "txn": 8675309,
+    "sub_id": {
+        "format": "complex",
+        "device": {
+            "format": "iss_sub",
+            "iss": "https://idp.example.com/123456789/",
+            "sub": "e9297990-14d2-42ec-a4a9-4036db86509a"
+        },
+        "tenant": {
+            "format": "opaque",
+            "id": "123456789"
+        }
+    },
+    "events": {
+        "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change": {
+            "current_status": "not-compliant",
+            "previous_status": "compliant",
+            "initiating_entity": "policy",
+            "reason_admin": {
+                "en": "Location Policy Violation: C076E8A3"
+            },
+            "reason_user": {
+                "en": "Device is no longer in a trusted location."
+            },
+            "event_timestamp": 1615304991643
+        }
+    }
+}
+```
+
+---
+
+## Omnissa’s Implementation Vision
+The **Security Events Service (SES)** centralizes configurations and security event routing across Omnissa products. It is designed as an **independent microservice**, not embedded within Access or UEM, but built on top of Omnissa’s platform services like:
+- **Crypto** (secure token signing and verification),
+- **Messaging** (event distribution),
+- **Distributed Cache** (low-latency lookups),
+- **Feature Flags & Config Management**.
+
+### Why Independent?
+The vision is clear: SES understands **SSF and CAEP protocols** so that **none of the Omnissa products (UEM, Intelligence, Access)** need to implement protocol logic.  They simply forward events to SES, which:
+- Normalizes signals,
+- Handles partner-specific transformations,
+- Manages event streams and subscriber configurations.
+
+**Integration Flow:**
+- **Sources**: UEM (device compliance), Intelligence (risk analytics), Access (identity events).
+- **SES**: Converts these into SSF-compliant signals.
+- **Partners**: Okta, Ping, Apple Business Manager consume via CAEP streams.
+
+---
+
+## Bootstrapping Flow
+1. Admin adds a partner in SES UI.
+2. System generates:
+   - **Partner specific well-known URL**: `https://<tenant>/.well-known/ssf-configuration/ssf/subscribers/<partner id>`
+   - **OAuth2 client** with `ssf.read` and `ssf.manage` scopes.
+3. Partner uses these credentials to configure event streams via SSF APIs.
+
+---
+
+## Engineering Challenges & Solutions
+### 1. Signal Routing
+- **Option A**: Source sends partner-specific signals.
+  - Pro: No SES complexity.
+  - Con: Higher API overhead.
+- **Option B**: SES transforms signals per partner.
+  - Pro: Single source → SES call.
+  - Con: SES must manage partner-specific content rules.
+**Omnissa chose Option B for scalability.**
+
+### 2. Queueing for Scale
+Spikes happen—e.g., a UEM compliance policy change can trigger thousands of events. We evaluated:
+- **SQS**: Simple, per-stream queues, but limited batch size.
+- **RDS**: Full control, but heavy operational overhead.
+- **Kafka**: Chosen for MVP due to:
+  - High throughput.
+  - Sovereign cloud flexibility.
+  - Support for consumer groups for scaling.
+
+### 3. Protocol Versioning
+CAEP evolved from Draft 1 to stable spec. Solution:
+- Version-aware parsers.
+- Backward compatibility layers.
+- Automated regression tests across vendor implementations.
+
+### 4. Authentication & Scopes
+- Introduced `ssf.read` and `ssf.manage` scopes for SSF APIs.
+- Enforced **client_credentials** flow for subscribers.
+
+---
+
+## APIs and Developer Experience
+Omnissa exposed SSF-compliant APIs for partners:
+
+### Discovery
+```http
+GET /.well-known/ssfconfiguration/secevents/ssf/subscribers/{id}
+```
+
+### Create Stream
+```http
+POST /secevents/ssf/subscribers/{id}/stream
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+  "delivery": {
+    "method": "urn:ietf:rfc:8935",
+    "endpoint_url": "https://partner.example.com/events"
+  },
+  "events_requested": [
+    "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change"
+  ]
+}
+```
+
+### Status & Verification
+```http
+GET /secevents/ssf/subscribers/{id}/status
+POST /secevents/ssf/subscribers/{id}/verify
+```
+
+
+
+---
+
+## Broader Ecosystem Adoption
+Beyond these specific integrations, SSF adoption is growing across the security ecosystem:  
+- **Cloudflare–Okta Integration** Cloudflare and Okta have implemented SSF-driven integrations that enable continuous evaluation of user sessions.  
+- **Google** leverages SSF/CAEP flows for continuous risk-based access in Google Workspace.  
+- **IBM** integrates SSF/CAEP into identity and access management offerings to enable real-time trust scoring.  
+- **SailPoint** uses SSF/CAEP for identity governance, ensuring that entitlements are continuously validated against risk signals.  
+
+This ecosystem momentum highlights SSF as the emerging **standard for inter-vendor trust communication**.
+
+---
+
+## Conclusion
+The Shared Signals Framework (SSF) is more than a technical specification—it is the **backbone of operational Zero Trust**. Through real-world integrations such as Cloudflare–Okta, Omnissa–Okta, and Apple Business Manager–Omnissa, SSF proves its value in:  
+- Reducing incident response times  
+- Enforcing adaptive, risk-based access  
+- Ensuring interoperability across complex IT environments  
+
+As organizations continue to adopt Zero Trust, SSF will serve as the foundation that allows **security tools to collaborate dynamically**, turning Zero Trust from a concept into a daily operational reality.  
+
+---
+
+## References
+1. [OpenID Foundation – *Shared Signals Framework (SSF)*](https://openid.net/wg/sse/)  
+2. [Shared Signals Framework - *The Blueprint for Modern IAM*](https://openid.net/shared-signals-framework-the-blueprint-for-modern-iam-part-1-of-4/)
+3. [Okta - *Enhancing Security with Okta Identity Threat Protection and Omnissa*](https://support.okta.com/help/s/article/enhancing-security-with-okta-identity-threat-protection-and-omnissa?language=en_US)  
+4. [Omnissa Okta Integration Demo – *Shared Signals Framework: Enabling Real-Time Risk Sharing*](https://www.youtube.com/watch?v=7OvvtDWjfJQ)  
+5. [Cloudflare Blog – *Cloudflare & Okta integration with SSF for Zero Trust*](https://blog.cloudflare.com/protect-against-identity-based-attacks-by-sharing-cloudflare-user-risk-with-okta)  
+6. [IBM Security – *Verify Antenna and SSF adoption*](https://www.ibm.com/docs/en/security-verify?topic=integrations-verify-antenna)  
+7. [SailPoint – *Continuous Identity with Shared Signals* (Identiverse 2024 keynote)](https://www.sailpoint.com/blog/real-time-signals-continuous-identity-identiverse)  
+8. [Google -  *Google Workspace Shared Signals Framework (SSF) Integration Guide*](https://developers.google.com/workspace/shared-signals/api/ssf-api)  

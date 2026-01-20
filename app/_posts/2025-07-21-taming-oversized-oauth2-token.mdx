@@ -5,7 +5,7 @@ export const metadata = {
   categories: ["security", "oauth"],
   author: "samarp",
   image: "/assets/images/posts/2025/api-gateway.png",
-  featured: false,
+  featured: true,
   description:
     "I vividly recall how a seemingly insignificant detail ended up disrupting our entire authentication flow. As an engineer at Omnissa Intelligence (OI), I was on the front line when our frontend-heavy application (with a Backend-for-Frontend (BFF) API Gateway) started mysteriously failing to authenticate certain users. We’d see login attempts succeed, only for users to be immediately logged out or stuck in reload loops. Diving into logs and browser data, we discovered the culprit: an OAuth2 JWT access token so large that it exceeded browser cookie limits, causing the cookie to be silently dropped. This is the story of how we diagnosed the “giant token” problem, learned from industry insights, and engineered a robust solution using envelope encryption to regain control of our sessions.",
 };
