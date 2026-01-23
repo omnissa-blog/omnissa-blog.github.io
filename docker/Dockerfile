@@ -1,5 +1,5 @@
 # Red Hat UBI Minimal with Node.js
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1768783948
 
 # Set environment variables
 ENV NODE_VERSION=24.12.0 \
