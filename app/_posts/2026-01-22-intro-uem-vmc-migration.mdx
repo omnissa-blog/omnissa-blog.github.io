@@ -1,0 +1,127 @@
+export const metadata = {
+  layout: "post",
+  title: "Migrating UEM from AWS VMC to Native AWS",
+  date: "2026-01-22",
+  categories: ["SaaS", "AWS", "Networking", "Security"],
+  author: "jbroch",
+  image: "/assets/images/posts/2026/uem-vmc-migration-part-1.png",
+  featured: false,
+  description: "This article provides an overview of Omnissa's platform transition that involved migrating the UEM SaaS service from AWS VMC to Native AWS." 
+};
+
+## Introduction
+
+On May 26, 2022, Broadcom shocked the software world by announcing its
+intent to acquire VMware for $61 Billion. At the time, our business was
+one of many business units within VMware. We were known as EUC - The
+End-User Computing Business Unit.
+
+Our team was responsible for the UEM SaaS service, most of which was
+hosted out of VMware Cloud (VMC) on AWS. With over 800 physical hosts
+spread across 8 regions, we were one of VMC’s largest customers. This
+announcement prompted a lot of questions: Were we likely to remain part
+of Broadcom? Would Broadcom continue to invest in and improve VMC? If we
+didn’t remain part of Broadcom, how would our cost structure change?
+
+By mid-2023 the acquisition appeared likely to close and we decided, for
+a variety of reasons, that native AWS was the right long-term choice for
+us and for our customers. Planning started in earnest.
+
+## UEM Application Architecture
+
+To understand the scope of such a migration, it is necessary to
+understand the key components of the UEM service. The core of UEM
+service consists of Windows application servers running .NET code and
+leveraging a SQL Server database. Memcached is used as a caching layer
+for SQL Server. Work to modernize the stack over the past few years
+introduced a number of containerized services that run on Linux, a
+Postgres database, Kafka, OpenSearch, and Redis. As with most SaaS
+services, the external tier is comprised of redundant load-balancers.
+Being part of VMware, we had previously adopted load balancers from AVI
+Networks.
+
+We also host a number of supporting services required by UEM such as
+AirWatch Cloud Messaging Service
+([AWCM](https://docs.omnissa.com/bundle/AirWatchCloudMessagingVSaaS/page/AirWatchCloudMessagingAWCM.html)),
+Application Wrapping, Factory Provisioning Service, and Certificate
+Signing Service. Additionally, we host Active Directory and various
+management servers including servers for metrics collection and logging.
+There was a lot to be migrated.
+
+## UEM SaaS Offering
+
+Another key dimension that influenced our planning was the two different
+hosting models used by our customers. Dedicated SaaS offers large
+customers their own deployment of UEM much like a managed service. These
+customers generally have strict change control requirements that impact
+the timing of maintenance, particularly if downtime is involved. Shared
+SaaS aligns more with a traditional SaaS service which is multi-tenant
+with hundreds or thousands of customers leveraging a single environment.
+In addition, instances of UEM are classified as either UAT (instances
+used primarily by customers for testing) or Production. In total, well
+over a thousand environments had to be migrated.
+
+## Migration Phases
+
+We divided the migration into multiple top-level workstreams:
+
+1. Load balancers – This workstream would shift ingress traffic from the NSX edge in VMC over to AWS. As a result, external IP addresses for the service would change and any IP-based allow lists implemented by customers would also need to change. Despite discouraging IP-based whitelisting, many customers use it, so this phase required customers notifications well in advance and the flexibility to accommodate scheduling changes if customers needed extra time. This was the most visible change for customers.
+
+1. Management infrastructure - includes Active Directory, Jenkins, and various other management servers. This workstream also included a re-architecture of our management network in AWS so that management systems were properly isolated from production systems and unnecessary network connectivity could be eliminated.
+
+1. Supporting services – includes AWCM and other production services required by UEM.
+
+1. Modernized components – includes the Linux-based containers and several different datastores. Fortunately, we leveraged AWS managed Postgres, OpenSearch, and Redis for the initial deployment of those components and so the only thing that we needed to migrate was the application containers and the underlying compute.
+
+1. UAT instances of UEM – these instances would move first. Since they are fundamentally test instances, any problems seen in this phase could be addressed without material business impact to our customers.
+
+1. Production instances of UEM – this would be the final phase of migration. A downtime maintenance window would be required to move each UEM database. Beyond that, customers should not notice any changes to their service.
+
+## Summary
+
+The timeline under which we executed each phase is shown in the table
+below. There was lots of planning, code changes to support our
+automation, and learning as we moved to a fundamentally different
+platform. AWS was a great partner throughout.
+
+| **Phase**    | **Description**           | **Start**     | **Complete**   |
+| ------------ | ------------------------- | ------------- | -------------- |
+| 1            | Load balancers            | March 2024    | September 2024 |
+| 2            | Management infrastructure | July 2024     | October 2024   |
+| 3            | Supporting services       | October 2024  | April 2025     |
+| 4            | Modernized components     | April 2024    | May 2024       |
+| 5            | UEM UAT                   | November 2024 | December 2024  |
+| 6            | UEM production            | February 2025 | April 2025     |
+
+Today, after completing the migration, our infrastructure is simpler,
+more robust, and more secure and we can confidently continue to expand
+our service offerings. Some key technical accomplishments include:
+
+* Complete Terraform-based automation of our AWS infrastructure
+
+* Leveraging Elasticache for Memcached. This eliminated the effort associated with patching and management of hundreds of virtual machines previously dedicated to Memcached.
+
+* Leveraging RDS for SQL Server. This dramatically reduced our management effort for SQL Server and at the same time eliminated the efforts associated with patching and managing these database instances.
+
+* Leveraging Managed Active Directory.
+
+* The containerization of AWCM and deployment under ECS Fargate. Less than 100 containers globally replaced over 300 Windows Server machines, again reducing our operational overhead.
+
+* Taking advantage of IAM Instance and Container roles to simplify access to AWS services.
+
+* Standardizing the deployment of our Jenkins runners on EKS.
+
+The great thing about this transition is that we improved our
+infrastructure and leveraged managed services without incurring
+additional cost when compared to our deployment in VMC. In fact, we
+avoided a VMC renewal that would have increased our cost structure
+dramatically. Going forward, we have better visibility into our
+infrastructure and better tools to drive continued optimizations to our
+infrastructure.
+
+Subsequent articles will cover each phase of this migration in more
+detail and dive deep into the technical challenges and learnings for
+each phase.
+
+See also: [How Omnissa saved millions by migrating to Amazon RDS and Amazon EC2](https://aws.amazon.com/blogs/database/how-omnissa-saved-millions-by-migrating-to-amazon-rds-and-amazon-ec2/)
+

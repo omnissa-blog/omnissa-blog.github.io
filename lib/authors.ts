@@ -62,4 +62,10 @@ export const AUTHORS: Record<string, Author> = {
     avatar: "/assets/images/avatar/wtian-avatar.webp",
     email: "wtian@omnissa.com",
   },
+  jbroch: {
+    name: "Josh Broch",
+    display_name: "Josh Broch",
+    avatar: "/assets/images/avatar/jbroch-avatar.jpg",
+    email: "jbroch@omnissa.com",
+  },
 };

@@ -36,7 +36,7 @@ export function PostHeader({ metadata }: PostHeaderProps) {
           <span className="font-semibold">{authorDisplayName}</span>
         </div>
         <span className="text-sm text-gray-500">
-          {metadata.date && format(new Date(metadata.date), "PPP")}
+          {metadata.date && format(new Date(metadata.date + "T12:00:00"), "PPP")}
         </span>
       </div>
     </div>
