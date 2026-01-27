@@ -1,6 +1,6 @@
 export const metadata = {
   layout: "post",
-  title: "Mocking the Backend: Accelerating Mobile Development and Resilience Testing",
+  title: "Building Reliable, Performant Mobile Experiences Across Platforms",
   date: "2025-09-30",
   categories: ["Automation", "CI/CD", "engineering"],
   author: "cbalabhadrapat",
@@ -20,6 +20,7 @@ This mocking strategy was implemented in the context of **Workspace ONE UEM**, a
 
 The mobile applications involved included the **Android HUB** and **iOS HUB** apps, which serve as enterprise mobility gateways for users to access corporate resources securely.
 
+![Mocking strategy](/assets//images/posts/2025/mocking-framework.png "Backend Mocking Architecture for Workspace ONE Mobile Apps")
 
 ## The Bottleneck Blues: Dependencies and Complexities
 
@@ -33,7 +34,7 @@ Manually setting up and maintaining these configurations isn’t just tedious—
 
 By introducing mocking into our development and testing workflows, we were able to address several recurring challenges:
 
-- **Backend Readiness Delays**: Mobile development can continue as soon as the API contract is defined, even when server-side implementations are in active development. This avoids waiting for unavailable services and speeds up the overall development process.
+- **Parallel Development Streams**: Mobile and backend development can continue as soon as the API contract is defined, even when server-side implementations are in active development. This avoids waiting for unavailable services and speeds up the overall development process.
 - **Complex feature or environment setups**: Setting up environments for certain complex features or scenarios (eg: SCEP/Active directory/SAML etc) requires expertise, and replicating these setups across multiple environments can be a significant effort. API mocking simplifies this process by providing a stable, self-contained environment for testing.
 - **Environment Inconsistencies**: A wide range of test cases can be covered using this approach, where ad-hoc behavior changes can be implemented very easily. For example, it allows for easy testing of various features that appear due to a setting change or even behind a feature flag, such as the type or number of apps to be displayed.
 - **Performance Bottlenecks**: Mocking allowed us to isolate backend latency and give a consistent app performance during automation.
