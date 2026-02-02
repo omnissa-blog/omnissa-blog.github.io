@@ -73,5 +73,11 @@ export const AUTHORS: Record<string, Author> = {
     display_name: "Geoffrey Hichborn",
     avatar: "/assets/images/avatar/ghichborn-avatar.png",
     email: "ghichborn@omnissa.com",
+  },
+  nkini: {
+    name: "Nagendra Kini",
+    display_name: "Nagendra Kini",
+    avatar: "/assets/images/avatar/nkini-avatar.png",
+    email: "nkini@omnissa.com",
   }
 };
