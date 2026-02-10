@@ -9,6 +9,8 @@ export const metadata = {
   description: "This article is part of a series covering UEM's journey out of VMware Cloud (VMC) to native AWS. It covers the migration of UEM's ingress traffic load balancers"
 };
 
+This article is part 2 of the series [Migrating UEM from AWS VMC to Native AWS](/story/2026-01-26-intro-uem-vmc-migration)
+
 ## The Problem
 
 One of the early pain-points with operating a SaaS service in VMC involved the routing of traffic from the public internet to our AVI load balancers. As part of the NSX subsystem, VMC provides an edge gateway which is a virtual machine cluster (without automatic failover) run by VMC that passes traffic from outside of the VMC network into the software-defined network in VMC. There could only be a single edge gateway running, and if something went wrong with it, we had to file a support ticket with the VMC to have their support team manually fail over the gateway. Additionally, it was not configurable beyond providing a t-shirt size setting on how big it would be. This presented a critical failure point in our service and was responsible for several outages in the UEM service when unexpected volumes of traffic would overwhelm the gateway, even on its largest setting.
@@ -43,4 +45,3 @@ The planning and code changes took a little over a month. We granted significant
 
 This took a significant load off of our edge gateway and lead to the elimination of downtime incidents related to the edge gateway falling over. It also provided a path to gradually move backend services from VMC over to the connected-VPC, further reducing traffic passing through the edge gateway. AVI on EC2 also provided additional capabilities for its service engines that were not available on its ESXi version, including auto-scaling, easy resizing and replacement, and automatic replacement of failed service engines.
 
-See also: [Migrating UEM from AWS VMC to Native AWS](https://engineering.omnissa.com/story/2026-01-26-intro-uem-vmc-migration)
