@@ -12,9 +12,9 @@ export const metadata = {
 
 ## Introduction
 
-Product and engineering teams often need the same view, modal, or component to appear in different places — for example, when visualizing a relationship between entities that live in different libraries of the [Nx monorepo](https://nx.dev/docs/concepts/decisions/why-monorepos). Reusing the same UI in these contexts keeps behavior and UX consistent, but it can conflict with keeping bundles small and avoiding circular dependencies across Nx libraries.
+Product and engineering teams often need the same view, modal, or component to appear in different places — for example, when visualizing relationships between entities that exist in different [Nx monorepo](https://nx.dev/docs/concepts/decisions/why-monorepos) libraries. Reusing the same UI in these contexts keeps behavior and UX consistent, but it can conflict with keeping bundles small and avoiding circular dependencies across Nx libraries.
 
-This article describes a pattern for Lazy Loading Angular Standalone Components from one Nx library into another. That approach enables code splitting and on-demand loading of feature components across library boundaries, so the same component can be rendered in multiple contexts without duplicating logic or pulling heavy dependencies in every consumer.
+This article describes a pattern for Lazy Loading Angular Standalone Components from one Nx library into another. This approach enables code splitting and on-demand loading of feature components across library boundaries, so the same component can be rendered in multiple contexts without duplicating logic or pulling heavy dependencies in every consumer.
 
 ---
 
@@ -379,7 +379,7 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-> **Note:** `setComponentImportByType` can be called directly on `app.component.ts` initialization or in `app.module.ts`.
+> **Note:** You can call `setComponentImportByType` directly during `app.component.ts` initialization or inside `app.module.ts`.
 
 ### 4. Lazy Load Service
 
