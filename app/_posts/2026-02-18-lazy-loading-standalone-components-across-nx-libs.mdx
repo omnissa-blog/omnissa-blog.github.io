@@ -49,7 +49,7 @@ import { LargeComplexComponent } from '@myorg/feature-b';
 
 - **Cross-domain dependency:** Feature A now depends on Feature B, violating domain boundaries. This creates a direct coupling between two separate business domains that should be independent, making it harder to understand dependencies and leading to a tangled architecture where changes in one domain ripple through others.
 
-- **Bundle bloating:** All of Feature B's code gets bundled with Feature A, even if only used occasionally to serve a specific use case. When Vite/esbuild builds the application, it must include Feature B's entire codebase, including all its components, services, NgRx Store modules, and dependencies in Feature A's bundle, even if that component is rarely used or only needed in specific scenarios.
+- **Bundle bloating:** The imported component and all of its dependencies—child components, NgRx Store modules, translations, services, and the rest of its dependency graph—get bundled with Feature A, even if the component is only used occasionally. When Vite/esbuild builds the application, it must include that entire dependency tree in Feature A’s bundle, which can be a large portion of Feature B’s code.
 
 - **Tight coupling:** Changes in Feature B can break Feature A. Any refactoring, API changes, or structural modifications in Feature B's components require corresponding updates in Feature A, creating a maintenance burden and increasing the risk of breaking changes across feature boundaries.
 
@@ -121,17 +121,17 @@ export class FeatureADashboardComponent {
     // Step 4: Create the component imperatively, passing the EnvironmentInjector
     const componentRef = this.previewContainer.createComponent(
       FeatureBPreviewComponent,
-      { environmentInjector: featureInjector }
+      { 
+        environmentInjector: featureInjector,
+        bindings: [
+          inputBinding('entityId', entity?.id),
+          inputBinding('displayMode', 'modal'),
+          outputBinding('closed', () => {
+            this.previewContainer.clear();
+          }),
+        ],
+      }
     );
-
-    // Step 5: Pass Input props to the dynamically created component
-    componentRef?.setInput('entityId', entity?.id);
-    componentRef?.setInput('displayMode', 'modal');
-
-    // Step 6: Listen to Output events from the dynamically created component
-    componentRef.instance.closed.subscribe(() => {
-      this.previewContainer.clear();
-    });
   }
 }
 ```
@@ -193,16 +193,51 @@ Create module wrappers for the lazy-loaded components that encapsulate all of th
 @NgModule({
   imports: [
     StoreModule.forFeature('feature', featureReducer),
-    TranslateModule
+    EffectsModule.forFeature(effects),
+    TranslateModule.forChild({...})
   ],
   declarations: [PreviewComponent],
   exports: [PreviewComponent]
 })
-export class PreviewModule {}
+export class PreviewModule {
+  // Method to resolve the component type
+  resolveComponent() {
+    return PreviewComponent;
+  }
+}
 
 // Usage
-const module = await import('@myorg/feature-b/preview.module');
-const moduleRef = createNgModule(module.PreviewModule, this.injector);
+async loadComponent(elementRef: ElementRef, props: any) {
+  //  Dynamic import the module
+  const module = await import('@myorg/feature-b/preview.module');
+  
+  // Create module instance with parent injector  
+  const moduleRef = createNgModule(module.PreviewModule, this.injector);
+  
+  //  Get component type from module
+  const componentType = moduleRef.instance.resolveComponent();
+  
+  // Create component with module's injector passed to
+  // Angular's createComponent() function from @angular/core
+  const componentRef = createComponent(componentType, {
+    hostElement: elementRef.nativeElement,
+    environmentInjector: moduleRef.injector 
+  });
+  
+  // Attach to Angular change detection
+  this.appRef.attachView(componentRef.hostView);
+  
+  // Set input properties
+  componentRef.setInput('entityId', props.entityId);
+  componentRef.setInput('displayMode', props.displayMode);
+  
+  // Listen to outputs
+  componentRef.instance.closed.subscribe(() => {
+    componentRef.destroy();
+  });
+  
+  return componentRef;
+}
 ```
 
 **Pros:**
@@ -213,7 +248,7 @@ const moduleRef = createNgModule(module.PreviewModule, this.injector);
 
 **Cons:**
 
-- Going against Modern Angular's direction (not compatible with standalone components)
+- Going against Modern Angular's direction of moving to standalone components
 - Module metadata overhead — larger bundle size
 
 ---
@@ -418,16 +453,16 @@ export class LazyLoadService {
     }
 
     // Create signal for this component type
-    const componentTypeSig = signal<Type<unknown> | null>(null);
+    const componentType = signal<Type<unknown> | null>(null);
 
     // Start loading the component
     this.importByType?.[componentType]?.().then((type) => {
-      componentTypeSig.set(type);
+      componentType.set(type);
     });
 
     // Cache the signal
-    this.componentTypeCache.set(componentType, componentTypeSig);
-    return componentTypeSig;
+    this.componentTypeCache.set(componentType, componentType);
+    return componentType;
   }
 }
 ```
@@ -454,19 +489,19 @@ type ComponentInputs = Record<string, unknown>;
 @Component({
   selector: 'app-lazy-container',
   template: `
-    @if (loadedComponentTypeSig()) {
-      <ng-container *ngComponentOutlet="loadedComponentTypeSig(); inputs: propsSig()" />
+    @if (loadedComponentType()) {
+      <ng-container *ngComponentOutlet="loadedComponentType(); inputs: props()" />
     }
   `,
   imports: [NgComponentOutlet],
 })
 export class LazyContainerComponent {
-  public componentTypeSig = input<LazyComponentType>(undefined, { alias: 'componentType' });
-  public propsSig = input<ComponentInputs>(undefined, { alias: 'props' });
+  public componentType = input<LazyComponentType>(undefined);
+  public props = input<ComponentInputs>(undefined);
   private readonly lazyLoadService = inject(LazyLoadService);
 
-  public readonly loadedComponentTypeSig = computed(() => {
-    const type = this.componentTypeSig();
+  public readonly loadedComponentType = computed(() => {
+    const type = this.componentType();
     return this.lazyLoadService.getComponentType(type)();
   });
 }
@@ -592,7 +627,7 @@ libs/
 
 - **Improved Time to Interactive (TTI) and Total Blocking Time (TBT):** Less JavaScript to parse and compile means the main thread is freed up sooner for user interactions.
 
-- **Better Core Web Vitals scores:** Lazy loading directly improves Largest Contentful Paint (LCP) and First Input Delay (FID/INP).
+- **Better Core Web Vitals scores:** Lazy loading directly improves Largest Contentful Paint (LCP) and First Input Delay (FID).
 
 ### Maintainability
 
@@ -622,7 +657,7 @@ The `LazyLoadService` can be tested by mocking the component import map and veri
 
 - **Use Vitest's async utilities:** Use native async/await with `vi.waitFor()` to wait for the signal to resolve, or `vi.useFakeTimers()` + `await vi.runAllTimersAsync()` when timers are involved.
 - **Test signal initial state:** Verify that signals initially return `null` before the dynamic import completes.
-- **Test signal resolution:** Use `await vi.waitFor(() => componentTypeSig() !== null)` to wait for the promise to resolve, then verify the signal contains the expected component type.
+- **Test signal resolution:** Use `await vi.waitFor(() => componentType() !== null)` to wait for the promise to resolve, then verify the signal contains the expected component type.
 - **Test caching behavior:** Call `getComponentType()` multiple times with the same enum value and verify the same signal instance is returned (referential equality).
 - **Test multiple components:** Verify that different component types get different signals and each resolves correctly.
 - **Mock the import map:** Provide a mock import map with `Promise.resolve()` returning mock component classes to avoid actual module imports during tests.
@@ -635,7 +670,7 @@ The `LazyContainerComponent` can be tested by mocking the `LazyLoadService` and 
 
 - **Mock the LazyLoadService:** Use Vitest Spies to mock the service and control what signals are returned.
 - **Use signal mocks:** Create mock signals using `signal()` to simulate the async loading behavior without actual imports.
-- **Test computed signal behavior:** Verify that the `loadedComponentTypeSig` computed signal correctly derives its value from the service signal.
+- **Test computed signal behavior:** Verify that the `loadedComponentType` computed signal correctly derives its value from the service signal.
 - **Test input changes:** Use `fixture.componentRef.setInput()` to update component inputs and verify re-computation.
 - **Test reactive updates:** Change the mock signal value and verify the computed signal updates reactively.
 - **Test null/undefined handling:** Verify the component handles missing or undefined component types gracefully.
