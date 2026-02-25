@@ -590,7 +590,7 @@ libs/
 
 - **Faster initial page load:** With a smaller initial bundle, the browser downloads, parses, and executes less JavaScript upfront.
 
-- **Improved Time to Interactive / Total Blocking Time (TTI/TBT):** Less JavaScript to parse and compile means the main thread is freed up sooner for user interactions.
+- **Improved Time to Interactive (TTI) and Total Blocking Time (TBT):** Less JavaScript to parse and compile means the main thread is freed up sooner for user interactions.
 
 - **Better Core Web Vitals scores:** Lazy loading directly improves Largest Contentful Paint (LCP) and First Input Delay (FID/INP).
 
@@ -620,9 +620,9 @@ The `LazyLoadService` can be tested by mocking the component import map and veri
 
 **Key Testing Patterns:**
 
-- Use `fakeAsync` and `tick()`: Since component loading is asynchronous, use the fakeAsync test zone and `tick()` to advance time until promises resolve.
+- **Use Vitest's async utilities:** Use native async/await with `vi.waitFor()` to wait for the signal to resolve, or `vi.useFakeTimers()` + `await vi.runAllTimersAsync()` when timers are involved.
 - **Test signal initial state:** Verify that signals initially return `null` before the dynamic import completes.
-- **Test signal resolution:** After `tick()`, verify the signal resolves to the expected component type.
+- **Test signal resolution:** Use `await vi.waitFor(() => componentTypeSig() !== null)` to wait for the promise to resolve, then verify the signal contains the expected component type.
 - **Test caching behavior:** Call `getComponentType()` multiple times with the same enum value and verify the same signal instance is returned (referential equality).
 - **Test multiple components:** Verify that different component types get different signals and each resolves correctly.
 - **Mock the import map:** Provide a mock import map with `Promise.resolve()` returning mock component classes to avoid actual module imports during tests.
