@@ -1,7 +1,7 @@
 export const metadata = {
   layout: "post",
   title: "Lazy Loading Angular Standalone Components Across Nx Libraries",
-  date: "2026-02-26",
+  date: "2026-02-27",
   categories: ["UI", "Angular", "Angular Signals", "Lazy Loading"],
   author: "kyankov",
   image: "/assets/images/posts/2026/lazy-load-service-diagram.webp",
@@ -153,7 +153,7 @@ export class FeatureADashboardComponent {
 
 ### 2. Angular @defer
 
-[Deferrable views](https://angular.dev/guide/templates/defer), also known as `@defer` blocks, reduce the initial bundle size of the application by deferring the loading of code that is not strictly necessary for the initial rendering of a page. However, deferred components still have to be imported in order to be used in the template.
+[Deferrable views](https://angular.dev/guide/templates/defer), also known as `@defer` blocks, reduce the initial bundle size by deferring both the loading of the component’s code and its rendering until the block is triggered. You must import the component so the template can reference it, but the Angular compiler detects that it is only used inside a `@defer` block and emits it (along with its transitive dependencies) into a separate JavaScript chunk that is loaded only when the block is triggered. Those transitive dependencies need not be standalone.
 
 **Approach:**
 
@@ -175,7 +175,7 @@ export class FeatureADashboardComponent {
 
 **Cons:**
 
-- Cross-library dependencies still exist at compile time (component has to be imported in order to be used in the template)
+- Host still has to import the component so the template can reference it, so a compile-time (and Nx) dependency on the other library remains
 - No runtime dynamic component selection
   - Component must be statically referenced in template
   - Component cannot be chosen at runtime from a variable or expression
