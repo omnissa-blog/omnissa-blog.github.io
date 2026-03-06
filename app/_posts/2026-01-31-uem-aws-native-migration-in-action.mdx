@@ -65,6 +65,12 @@ Next, the migration unfolded in two high-impact phases
 While migrating customer environments remained our top priority, we deployed 4 non-production datacenters —all in parallel and without a hitch.
 From infrastructure to execution, this migration was big, bold, and lightning-fast—a true showcase of planning, teamwork, and automation.
 
+## A Few Engineering Learnings
+- At our scale, instance type shortages in some regions were inevitable. We built automation to dynamically select equivalent instances, allowing migrations to proceed without impacting performance or cost.
+- We adopted a backup-to-multiple-files strategy for large databases, striping backups across several files instead of a single file. This improved backup and restore performance while distributing I/O more efficiently.
+- FSx data migrations required careful handling due to deduplication behavior and the large number of small files. Leveraging multithreaded robocopy for bulk transfer, followed by DataSync for validation and incremental updates, proved to be the most effective approach.
+
+
 ## Outcome in Focus
 
 After overcoming enormous engineering hurdles, the results spoke for themselves.
