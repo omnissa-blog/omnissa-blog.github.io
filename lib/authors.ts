@@ -74,6 +74,12 @@ export const AUTHORS: Record<string, Author> = {
     avatar: "/assets/images/avatar/ghichborn-avatar.png",
     email: "ghichborn@omnissa.com",
   },
+  kyankov: {
+    name: "Kris Yankov",
+    display_name: "Kris Yankov",
+    avatar: "/assets/images/avatar/kyankov-avatar.webp",
+    email: "kyankov@omnissa.com",
+  },
   nkini: {
     name: "Nagendra Kini",
     display_name: "Nagendra Kini",
