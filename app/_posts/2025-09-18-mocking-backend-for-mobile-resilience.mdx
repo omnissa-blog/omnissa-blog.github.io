@@ -78,11 +78,26 @@ Mocking involves creating stand-ins, or mock servers, for your backend systems. 
 
 
 
-A simple yet effective way to implement mocking is by setting up a local Spring Boot server. This server can run alongside your development environment or automation suite.
+### Why Spring Boot Over Existing Tools?
 
-### Local Server Setup
+Before diving into implementation, it's worth addressing: why build a custom Spring Boot server instead of using existing mocking tools?
 
-Create a Spring Boot application that mirrors the endpoints of your actual backend API. Configure these endpoints to fetch canned responses from local JSON or XML files.
+Tools like **WireMock**, **MockServer**, **Postman Mock Server**, and **JSON Server** are excellent for simple request-response patterns. They're quick to set up and work well when each API call is independent. However, our mobile enrollment flows required something these tools couldn't easily provide:
+
+**Stateful Operations Across Requests**: Consider a typical enrollment flow:
+1. **Check-in Request**: Device sends a certificate signing request
+2. **Server Response**: Mock extracts the certificate and stores it
+3. **Secure Channel Request**: Device initiates encrypted communication
+4. **Server Response**: Mock retrieves the stored certificate to encrypt the response
+
+Data from request A must be captured, stored, and reused in request B. WireMock and similar tools are stateless by design—they can't natively extract data from one request and use it in subsequent responses without writing Java/JavaScript extensions, which defeats their simplicity.
+
+**Complex Cryptographic Operations**: Our flows involve BouncyCastle operations (signing, encrypting, certificate chain validation) with platform-specific differences. Spring Boot gives us full control over these operations with clean, testable code.
+
+**Polymorphic Platform Handling**: We needed the same endpoint to behave differently for iOS vs Android vs different enrollment modes, loading different configurations without code duplication.
+
+Spring Boot's instance variables, dependency injection, and Java ecosystem made these requirements straightforward, with only 15-20 minutes needed to add a new endpoint.
+
 
 ### Accessing the Mock Server
 
@@ -99,15 +114,16 @@ Store different response configurations in separate files (e.g., `user_A.json`, 
 
 ### Code Example: Spring Boot Endpoint
 
-Here is a simple example of a controller that returns a configuration file based on a `userType` parameter.
+
+Here is a simple example of a controller that returns a configuration file based on a `userType` parameter:
 
 ```java
 @RestController
 public class MockController {
     @GetMapping("/api/config")
-
     public ResponseEntity<String> getConfig(@RequestParam("userType") String userType) {
-        String configFilePath = "mock_data/" + userType + "_config.json";
+        String config = mockOperations.getMockData(userType + "_config.json");
+        return ResponseEntity.ok(config);
     }
 }
 ```
@@ -118,6 +134,46 @@ public class MockController {
 2.  **Rapid Iteration**: Modify configurations swiftly.
 3.  **Local Development**: Enhance debugging experience.
 4.  **Familiar Framework**: Leverages Spring Boot.
+
+### Architecture Overview: Scaling Without Duplication
+
+At first glance, mocking dozens of endpoints might seem like a maintenance nightmare. How do we avoid duplicating logic across platforms and enrollment modes?
+
+The solution is **polymorphism**. Here's how the architecture works:
+
+**1. Interface Layer** - Define core operations once:
+```java
+public interface EnrollmentHandler {
+    ResponseEntity validateOrganization(String request);
+    ResponseEntity getAuthenticationType();
+    ResponseEntity registerDevice();
+    // ... additional enrollment operations
+}
+```
+
+**2. Implementation Layer** - Multiple implementations for different scenarios:
+- Base implementation for standard enrollment flows
+- Platform-specific implementations (iOS, Android) handling crypto differences
+- Enrollment mode variants (corporate-owned, registered devices, etc.)
+- Each loads JSON/XML from its respective config directory
+
+**3. Endpoint Layer** - REST controllers delegate to the interface:
+```java
+@PostMapping("/api/enrollment/validate")
+public ResponseEntity validate(@RequestBody String request) {
+    return handler.validateOrganization(request);  // handler set at runtime
+}
+```
+
+The result: **Many endpoints, minimal code**. Each endpoint is just a thin wrapper that delegates to an interface method. Platform/mode differences are handled by loading different config files, not writing different code.
+
+**Adding a New Endpoint** (15-20 minutes):
+1. Add method to `EnrollmentHandler` interface
+2. Implement it in base class to load a JSON file
+3. Create JSON files for each scenario in respective config directories
+4. Add `@PostMapping` endpoint in controller that delegates to the interface method
+
+This pattern keeps the codebase maintainable even as endpoints grow.
 
 
 ## Secure Mocking with SSL Certificates
