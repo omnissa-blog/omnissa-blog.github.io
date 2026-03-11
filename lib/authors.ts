@@ -79,5 +79,11 @@ export const AUTHORS: Record<string, Author> = {
     display_name: "Kris Yankov",
     avatar: "/assets/images/avatar/kyankov-avatar.webp",
     email: "kyankov@omnissa.com",
+  },
+  svudutala: {
+    name: "Sai Kiran Vudutala",
+    display_name: "Sai Kiran Vudutala",
+    avatar: "/assets/images/avatar/svudutala-avatar.png",
+    email: "svudutala@omnissa.com",
   }
 };

@@ -1,0 +1,1049 @@
+export const metadata = {
+  layout: "post",
+  title: "Source Migration: Bitbucket to GitHub",
+  date: "2026-03-01",
+  categories: ["Platform Engineering", "DevOps", "GitHub"],
+  author: "svudutala",
+  image: "/assets/images/posts/2026/source-migration-bitbucket-to-github/01-migration-type-decision.png",
+  featured: false,
+  description:
+    "A comprehensive guide to migrating source control from Bitbucket to GitHub—covering pre-migration cleanup, complex migration with bbs2gh, repository rules translation, and post-migration bootstrapping.",
+  tags: ["Bitbucket", "GitHub", "Migration", "Platform Engineering", "DevOps"],
+};
+
+# Source Migration: Bitbucket to GitHub
+
+When migrating source control to a new platform, the approach depends on what you need to preserve. A simple push of Git objects is different from a full migration that includes collaboration history. Each pathway has different trade-offs in complexity, tooling, and risk.
+
+This framework is generic—it applies to any source control migration (GitLab, Azure DevOps, Perforce, or others). We use Bitbucket-to-GitHub as our concrete example throughout this guide, but the phases, workstreams, and principles translate to other source and destination platforms.
+
+---
+
+## Table of Contents
+
+- **1. Migration Pathway: Simple vs Complex**
+- **2. Migration Phases**
+- **3. Organizing for Speed**
+- **4. Pre-Migration Steps**
+  - 4.1 Understanding the Repository Landscape
+  - 4.2 Repository Analysis and Cleanup
+  - 4.3 Translating Repository Rules
+  - 4.4 Evaluating Plugins and Integrations
+  - 4.5 Repository Audit
+  - 4.6 Migration Prioritization
+- **5. Bitbucket to GitHub Repo Migration**
+  - 5.1 Migration Phases (Expanded)
+  - 5.2 Pre-Migration Prep
+  - 5.3 Tool: bbs2gh (Preferred)
+  - 5.4 Alternative Tools and Approaches
+- **6. Our Automation**
+  - 6.1 Workflow Catalog
+  - 6.2 Self-Service Dispatch
+  - 6.3 CSV-Driven Batching by Priority
+  - 6.4 Branch-per-Org Structure
+  - 6.5 Building the Migration Platform
+  - 6.6 Dry Runs, Gotchas, and Lessons Learned
+  - 6.7 Migration Execution
+- **7. Post-Migration**
+  - 7.1 Reclaiming User Identities (Mannequins)
+  - 7.2 Post-Migration Configuration: The Template
+  - 7.3 Repository Rules Bootstrap
+  - 7.4 Bamboo and GitHub Integration
+  - 7.5 SonarQube and GitHub Integration
+  - 7.6 Updating Git Submodules
+  - 7.7 Day of Migration
+  - 7.8 Outcomes
+
+---
+
+## 1. Migration Pathway: Simple vs Complex
+
+---
+
+Before migrating, decide what kind of migration you need. We found it useful to classify into two types based on what gets preserved.
+
+![1. Migration type decision](/assets/images/posts/2026/source-migration-bitbucket-to-github/01-migration-type-decision.png)
+
+
+| Capability | Simple Migration | Complex Migration |
+|------------|------------------|-------------------|
+| Migrates code | ✓ | ✓ |
+| Migrates commit history | ✓ | ✓ |
+| Migrates LFS | ✓ | * (addressed in pre-migration) |
+| Migrates tags | ✓ | ✓ |
+| Migrates issues | | ✓ |
+| Migrates pull requests | | ✓ |
+| Migrates hooks | | ✓ |
+
+*Note: Migration is more seamless for Git-based SCMs.*
+
+**Simple migration** moves .git objects only: code, commit history, tags, and LFS. No PR metadata, comments, or integrations. Straightforward—essentially a git push with preparation.
+
+**Complex migration** includes Git plus PR metadata: pull requests, comments, reviews, JIRA associations, and other platform-specific integrations. It requires exporter tooling but preserves full collaboration context.
+
+For our organization, complex migration was non-negotiable. Years of PR discussions and reviews contained decisions we could not lose. We chose the complex pathway and used the GitHub Enterprise Importer tooling for Bitbucket Server.
+
+---
+
+## 2. Migration Phases
+
+---
+
+The following overarching steps act as high-level phases:
+
+![2. Migration phases](/assets/images/posts/2026/source-migration-bitbucket-to-github/02-migration-phases.png)
+
+**Stage-1: Pre-Migration** — Understand your repositories, clean them up, and extract repository rules before moving anything. Repositories with large blobs, stale branches, or missing LFS configuration will complicate migration and degrade performance in the new platform.
+
+**Stage-2: Migration** — Execute the actual move. The pathway you choose determines what tooling you need and what gets migrated.
+
+**Stage-3: Post-Migration** — Bootstrap repositories with repository rules, reclaim user identities (map source platform users to destination accounts), and ensure developers can work effectively in the new environment.
+
+This mental map helped us separate discovery from execution, and execution from bootstrapping. Each stage had distinct owners and deliverables.
+
+**In this guide:** Pre-Migration Steps → Bitbucket to GitHub Migration → Post-Migration → Day of Migration
+
+---
+
+## 3. Organizing for Speed: How We Executed in Short Time
+
+---
+
+
+Executing a migration of this scale in a compressed timeline required a clear division of responsibilities. With a team of four to five engineers, we split into focused workstreams, each owning a distinct area:
+
+![3. Team workstreams](/assets/images/posts/2026/source-migration-bitbucket-to-github/03-team-workstreams.png)
+
+- **Source server prep** — Bitbucket permissions, SSH access, cleanup (blob removal, branch pruning), archive creation, and network mount configuration.
+- **Destination server prep (GitHub)** — Organization structure, permissions, team setup, and ensuring GitHub was ready to receive hundreds of repositories.
+- **Automations and tooling** — Migration factory, containerized scripts, bbs2gh integration, and orchestration workflows.
+- **Migration prep** — Two buckets:
+  1. **Migration** — tools and workflows to execute the migration (CI/CD triggers, bbs2gh orchestration)
+  2. **Post-migration** — workflows and config to plug into each repo after migration: branch protection, CODEOWNERS, repository rules (repo, team, org, or company scope)
+
+By assigning clear ownership to each workstream, we could move in parallel. But the migration team alone was not enough—this effort required coordination across the organization. We worked closely with **development teams** (who owned the repositories and needed to validate their code post-migration), **engineering services** (who managed the Bitbucket and Bamboo infrastructure), **network and security teams** (for firewall rules, SSH access, blob storage credentials, and PAT provisioning), **identity and access management** (for GitHub org setup, SSO, and team provisioning), and **release engineering** (to ensure CI pipelines continued delivering during the transition). The result was a coordinated effort that executed the migration over a single weekend—without the delays that would have come from a single-threaded approach.
+
+---
+
+## 4. Pre-Migration Steps
+
+---
+
+### 4.1 Understanding the Repository Landscape
+
+Before migrating anything, we needed to understand what we were working with. Many repositories had been active for years and accumulated binary files committed before LFS existed, oversized blobs buried in history, and stale branches that nobody had cleaned up. Migrating without addressing these would degrade performance in the new platform and complicate every tool in the chain.
+
+### 4.2 Repository Analysis and Cleanup
+
+![4. Repo analysis and cleanup](/assets/images/posts/2026/source-migration-bitbucket-to-github/04-repo-analysis-cleanup.png)
+
+We built tooling to analyze each repository (size, blobs, LFS candidates, branches) and produce a migration readiness report. Repositories that triggered warnings were flagged for remediation.
+
+This analysis was fully automated. All the tools—`git-sizer`, `git-filter-repo`, branch/PR/tag stats collection, and submodule detection—were baked into the containerized `github-migration-tools` Docker image. The **Pre-migration analysis** GitHub Actions workflow invoked this container for each repository, ran the full analysis suite, and committed the results back to the workflows repository under a structured path:
+
+```
+repository-stats/
+├── git-sizer.json              # Repository size metrics
+├── branch-stats.json           # Branch counts and activity
+├── pr-tags-stats.json          # PR and tag counts
+└── git-filter-repo/
+    └── analysis/
+        ├── blob-shas-and-paths.txt
+        ├── directories-all-sizes.txt
+        ├── directories-deleted-sizes.txt
+        ├── extensions-all-sizes.txt
+        ├── extensions-deleted-sizes.txt
+        ├── path-all-sizes.txt
+        ├── path-deleted-sizes.txt
+        └── renames.txt
+```
+
+Every repository had its own `repository-stats/` folder, committed by a service account bot. This gave us a complete, auditable record of each repo's state before migration—and powered the audit, cleanup decisions, and migration readiness reports described below.
+
+**Repo stats/analysis** — `git-filter-repo`, `git-sizer`, `bfs`
+**Branch cleanup** — Used APIs from the source server to identify open stale PRs by age; stale branches (those without PRs, or merged but not deleted).
+**Submodule detection** — Identified repositories with `.gitmodules` referencing Bitbucket URLs. These submodule references would break silently after migration if left unchanged, so they were flagged for post-migration URL updates.
+
+### 4.2.1 Example: git-filter-repo output
+
+Running `git-filter-repo` on a large repository produced output like this (abbreviated):
+
+| Metric | Value | Level of concern |
+|--------|-------|------------------|
+| Commits | 233k | |
+| Trees (total size) | 5.39 GiB | ** |
+| Blobs (total size) | 84.6 GiB | ********* |
+| Maximum blob size | 180 MiB | ****************** |
+| References (branches) | 1.70k | |
+
+The asterisks indicate problem areas. In this case, blobs dominated (84.6 GiB), with one 180 MiB blob—a JDK installer committed to history. Such artifacts became cleanup targets.
+
+### 4.2.2 Sample repo: approach we took
+
+For a repository like the one above, we first identified whether large blobs were active in any current or release branches.
+
+**If a blob was inactive** (not referenced by active branches) — we used `git-filter-repo` (or equivalent) to delete it from history.
+
+**If a blob was in use** — we migrated it to Git LFS backed by Artifactory, updated the Git tree to reference the LFS pointer, and removed the actual blob from history so it no longer appeared in the repository.
+
+Generic rules like "strip blobs less than 20MB" are risky: Git LFS and filter tools operate on the Git tree, not on branch semantics. They don't know which branches are active. We had to be careful to distinguish active vs. inactive blobs before acting. Often the culprits were images, small executables, or binaries committed together—individually small, collectively large.
+
+**Branch cleanup** for this sample repo:
+
+1. Identify branches with PRs merged to main or release — delete them
+2. Identify inactive branches created from main — no activity, safe to remove
+3. Reflog and gc — run `git reflog expire` and `git gc` to reclaim space on the **source server** (not local clones; the server holds the authoritative repository)
+
+Each source code server has its own way of managing Git; the cleaner the source, the better the migration. Some repos could be trimmed from 20GB to 200MB—dramatically improving clone and checkout times. This required close coordination with development teams who owned the repositories—we couldn't rewrite history or remove blobs without their review and sign-off. The effort was worth it, but don't underestimate the communication overhead.
+
+### 4.3 Translating Repository Rules
+
+Another major challenge surfaced during discovery: repository rules and access models in the source server did not map directly to GitHub.
+
+Rules exist at different scopes—**repository-level** (local to a repo), **team-level**, **organization-level**, and **company-level**—which makes it easier to reason about and apply them consistently. During extraction and translation, we mapped each rule to its appropriate scope in GitHub.
+
+Over time, repositories had evolved around functional ownership models. Teams typically owned one or more repositories, and Stash enforced repository rules such as:
+
+- Mandatory reviewers tied to specific teams
+- Merge permissions and branch restrictions
+- Branch protection policies
+- Repository-level access controls
+
+A simplified example looked like:
+
+- Team A → service repositories
+- Team B → platform repositories
+- DB Team → database related files
+
+These rules defined who could merge code, which reviewers were required, and how pull requests were validated. Preserving these review workflows was critical. If repositories migrated without these rules, review flows and ownership models would immediately break.
+
+### 4.3.1 Extracting Repository Rules Configuration
+
+The next challenge was discoverability. Some rules metadata was accessible through the Stash APIs, but other configuration—particularly around reviewer rules and repository permissions—was only available through the Stash UI.
+
+To capture this reliably, we built a lightweight automation that combined:
+
+- REST API queries where metadata was available
+- Targeted UI scraping where APIs were missing
+
+The extractor collected rules and permissions data for every repository and produced a normalized configuration file containing:
+
+- Repository name
+- Owning team(s)
+- Mandatory reviewers
+- Branch restrictions
+- Merge permissions
+- Team access mappings
+
+The output looked roughly like:
+
+```
+repository: service-repo-A
+owners: team-a
+mandatory_reviewers:
+  - team-a
+branch_rules:
+  - main
+  - release/*
+permissions:
+  write: team-a
+  read: platform-team
+```
+
+This configuration became the source of truth for translating repository rules into GitHub constructs.
+
+### 4.3.2 Normalizing Rules
+
+One complexity we encountered was that repository rules across repositories were not always consistent. Over time, teams had introduced variations in reviewer requirements, branch protection rules, and permission models. Instead of reproducing every repository's configuration exactly, we used this opportunity to normalize rules patterns where possible. Common patterns were standardized into reusable templates for team permissions, CODEOWNERS rules, and branch protection policies. This helped reduce long-term operational complexity while still preserving required review workflows.
+
+### 4.3.3 Config-Driven Bots
+
+To make enforcement repeatable, we introduced a set of config-driven bots. These bots consumed the generated configuration files and automatically applied rules during repository bootstrap. The bots handled tasks such as:
+
+- Creating repository teams
+- Applying branch protection rules
+- Generating CODEOWNERS files
+- Assigning default reviewers
+- Enforcing merge policies
+
+Because the bots were configuration-driven, repository rules could be reproduced consistently across repositories. This approach also made it easy to update rules in the future—changes could simply be applied by updating the configuration and re-running the automation.
+
+### 4.3.4 Why This Step Was Critical
+
+Extracting, normalizing, and applying rules through config-driven automation ensured repositories landed in GitHub with the correct model in place. Developers saw familiar review workflows; behind the scenes, we translated hundreds of repositories into a consistent, automated model.
+
+### 4.4 Evaluating Plugins and Integrations
+
+Over the years, teams had introduced Bitbucket plugins to support various development workflows—merge checks, notification hooks, build triggers, and more. Each integration needed to be evaluated: retain, replace, reimplement, or remove. In many cases, functionality previously handled by plugins could be simplified using native GitHub capabilities or lightweight automation, reducing operational complexity.
+
+### 4.5 Repository Audit: What Actually Needs to Migrate?
+
+Before we could plan migration waves, we needed to answer a more fundamental question: which repositories actually need to migrate now—and which don't?
+
+We ran a full audit across the source server, analyzing every repository for activity signals: last commit date, open pull requests, CI build frequency, release tags, and number of active contributors. The audit surfaced a clear picture:
+
+- **Active repositories** — Regular commits, open PRs, tied to CI pipelines and production releases. These needed full complex migration with all metadata preserved.
+- **Low-activity repositories** — Occasional commits or maintenance-only. Still needed migration but could move in later waves with less urgency.
+- **Inactive/archived repositories** — No commits in months (or years), no open PRs, no active CI. These were candidates for archival rather than migration—archived in place on the source server or moved as read-only mirrors in a final cleanup phase. In some cases, retention was driven by compliance requirements rather than engineering need.
+
+This audit was critical. Without it, we would have spent migration effort and validation time on repositories that nobody was using. By identifying what was truly active, we reduced the migration scope for the initial weekend push and deferred the rest to a later phase.
+
+### 4.6 Migration Prioritization
+
+With the audit data in hand, we categorized the active repositories by criticality—commit frequency, release cadence, code churn—into tiers: **P0** (highly active, shipping to production), **P1** (moderate activity), and **P2** (low-activity or archival). P0 repositories migrated first with the most scrutiny; lower-risk repos followed in batches. This tiering let us focus validation effort where it mattered most.
+
+---
+
+## 5. Bitbucket to GitHub Repo Migration
+
+---
+
+
+This section covers the migration execution phase—the Bitbucket-to-GitHub pathway for complex migration—including tools, automation, and how we moved hundreds of repositories while preserving full collaboration history.
+
+### 5.1 Migration Phases (Expanded)
+
+For each repository, the same flow was followed. The phases break down into these main blocks:
+
+![5. Migration phases expanded](/assets/images/posts/2026/source-migration-bitbucket-to-github/05-migration-phases-expanded.png)
+
+| Phase | Sub-blocks |
+|-------|------------|
+| **Pre-Migration** | Repo analysis & sizing, Cleanup, Repository rules extraction |
+| **Migration** | Export from Bitbucket, Import to GitHub, Validation |
+| **Post-Migration** | Mannequins (reclaim identities), Repository rules bootstrap, Workflow deployment |
+
+SonarQube and Bamboo reconfiguration happens *after* repositories land in GitHub—covered in Post-Migration.
+
+### 5.2 Pre-Migration Prep
+
+*The deep prep work—analysis, cleanup, rules extraction—is covered in Pre-Migration Steps above. The following is the per-repo readiness checklist before running migration.*
+
+Before migration could run, we had to prepare both the source (Bitbucket) and destination (GitHub) sides, plus run per-repo checks.
+
+### 5.2.1 Prerequisites (per repository)
+
+Gather the following for each repository:
+
+| Item | Purpose |
+|------|---------|
+| Source repo and stats | Size, blob count, branch count—determines migration readiness and tool limits |
+| Number of PRs | Metadata size; bbs2gh has a 10GB metadata limit |
+| Number of tags | Part of migration scope |
+| User mapping (source → GitHub) | Required for mannequins; map Bitbucket users to GitHub accounts for attribution |
+| Destination repo | Target org and repo name in GitHub |
+
+For permissions and scopes, see [GitHub's migration documentation](https://docs.github.com/en/migrations/using-github-enterprise-importer/migrating-from-bitbucket-server-to-github-enterprise-cloud/overview-of-a-migration-from-bitbucket-server-to-github-enterprise-cloud#configuring-permissions).
+
+### 5.2.2 Pre-Migration Checks
+
+Before running migration for a repository, ensure:
+
+- **Access to blob storage** — S3 (or Azure) bucket credentials configured; migration uploads archives here
+- **Build plan** — A workflow or job that can trigger the migration (e.g., GitHub Actions, Jenkins, Bamboo)
+- **Source repo read-only** — Mark the source repository as read-only before migration to prevent new commits
+- **Validation** — Validate PRs, tags, and user mappings; run pre-flight checks
+- **Service kit** — Run the service kit to set up GitHub Actions and reusable workflows in the destination repo
+
+### 5.2.3 Preparing Bitbucket Server
+
+Before migration could run, we had to prepare the Bitbucket Server side.
+
+1. **Permissions** — Bitbucket Server account with admin or super admin permissions (required for bbs2gh and Bitbucket APIs)
+2. **SSH access** — SSH access to Test and Prod instances for SFTP archive retrieval; configure SSH keys for the service account and verify login
+3. **Archive creation and network mount** — Archive is requested via HTTP GET (no separate POST). Configure network mount share for archive storage so the migration runner can access archives without manual copy
+
+```
+https://bitbucket.example.com/projects/PROJ/repos/my-repo/archive?format=zip
+```
+
+> **Note — Archive size vs. repository size:** The archive Bitbucket produces is typically larger than what you'd expect from the `.git` folder alone. Bitbucket Server holds additional metadata beyond standard Git objects—pull request data, commit comments, reviewer information, plugin state, and internal indexes. This metadata inflates the archive size. Factor this into your blob storage capacity planning and bbs2gh's 10GB limit calculations.
+
+### 5.2.4 Access Requirements
+
+Access requirements shaped our setup and required coordination across teams. Both the source (Bitbucket) and destination (GitHub) sides have distinct permission models that must be in place before migration can run.
+
+**Bitbucket**
+
+| Requirement | Details |
+|-------------|---------|
+| Account | User with admin or super admin permissions on Bitbucket Server |
+| SSH | Access to Test and Prod instances (Linux); required for SFTP archive retrieval by bbs2gh |
+| API access | HTTP access to Bitbucket REST APIs for archive creation and repository metadata |
+
+**GitHub**
+
+1. Create a personal access token (classic) with the scopes in the table below
+2. Grant the migrator role via CLI (not a default role)
+3. Enable the feature flag on the tenant to allow full import for the migration account
+
+| Task | Organization owner (UI or API) | Migrator (bbs2gh only) |
+|-----|-------------------------------|------------------------|
+| Running a migration (source organization) | `read:org`, `repo` | `read:org`, `repo` |
+| Running an organization migration (destination enterprise) | — | — |
+| Assigning the migrator role for repository migrations | `admin:org` | — |
+| Running a repository migration (destination organization) | `repo`, `admin:org`, `workflow` | `repo`, `read:org`, `workflow` |
+| Downloading a migration log | `repo`, `admin:org`, `workflow` | `repo`, `read:org`, `workflow` |
+| Reclaiming mannequins | `admin:org` | — |
+
+Coordinating these prerequisites across security, infrastructure, and platform teams took longer than we anticipated—budget time for it.
+
+### 5.3 Tool: bbs2gh (Preferred)
+
+bbs2gh is the tool used to migrate repositories from Bitbucket Server to GitHub. For complex migration, we used it to migrate all repository metadata, including commit history, pull requests, commit comments, and reviews. bbs2gh is an extension of the GitHub CLI and is part of the [GitHub Enterprise Importer](https://github.com/github/gh-gei) project. The tool is used for both export and import of repositories.
+
+### 5.3.1 Overview
+
+Once prerequisites and tokens are set, bbs2gh:
+
+1. Initiates a call to Bitbucket Server to create an archive
+2. Exports the archive from BBS (a `.tar` file created on the Bitbucket server)
+3. Uploads the archive to blob storage (AWS or Azure)
+4. Delegates to GitHub's backend API to import the archive
+
+### 5.3.2 Limitations
+
+- **10GB size limit** per repository
+- **10GB limit** for metadata (PRs, comments, etc.)
+- **Git LFS objects** are not migrated by the tool—we addressed LFS during pre-migration cleanup, so this was not a blocker
+
+Repositories that exceeded limits had to be remediated in pre-migration before they could be migrated.
+
+### 5.3.3 Blob Storage
+
+The tool uploads the archive to blob storage (AWS or Azure) before delegating to GitHub's import API. This is by design: GitHub's import service runs in the cloud and cannot reach your internal Bitbucket Server behind a firewall. The blob store acts as a publicly accessible intermediary—your migration runner uploads the archive there, and GitHub's backend pulls it from the same location without needing network access to your internal infrastructure.
+
+The bucket name must be unique. Note: GitHub Enterprise Importer does not delete your archive after migration is finished. To reduce storage costs, configure auto-deletion of the archive after a period of time (e.g., via lifecycle configuration on the bucket).
+
+### 5.3.4 Migration Runner Setup
+
+We ran migrations on Linux (AlmaLinux). The migration runner hosted SSH keys for Bitbucket access, a Python migration utility for orchestration, and the Docker container with the migration tooling:
+
+![6. Migration Runner architecture](/assets/images/posts/2026/source-migration-bitbucket-to-github/06-migration-runner.png)
+
+The **github-migration-tools** container image packaged everything needed for a migration run. If you are building a runner from scratch, the image includes:
+
+**bbs2gh and GitHub CLI** — The container ships with `gh` and the `gh-bbs2gh` extension pre-installed. For reference, the equivalent setup on a bare host:
+
+```bash
+# Install the GitHub CLI
+sudo dnf install 'dnf-command(config-manager)'
+sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+sudo dnf install gh
+
+# Install the gh-bbs2gh extension
+gh extension install github/gh-bbs2gh
+```
+
+**SSH setup** — The runner holds SSH keys for Bitbucket access. The container receives the key path via environment or mount. For a standalone runner:
+
+```bash
+# On Migration Runner - create SSH key (replace with your service account)
+ssh-keygen -t ed25519 -f ~/.ssh/id_ghmigration -C "service-account@your-bitbucket-server"
+
+# Copy public key to Bitbucket server
+ssh-copy-id -i ~/.ssh/id_ghmigration.pub service-account@your-bitbucket-server
+
+# Verify SSH login
+ssh -i ~/.ssh/id_ghmigration service-account@your-bitbucket-server
+```
+
+**Blob storage CLI** — The container includes the AWS CLI or Azure CLI. Credentials are passed at runtime via environment variables.
+
+### 5.3.5 Running a Migration
+
+For reference, the equivalent manual invocation (one repo at a time):
+
+```bash
+export AWS_SECRET_ACCESS_KEY=<>
+export AWS_ACCESS_KEY_ID=<>
+export AWS_REGION=us-east-1
+export BBS_USERNAME=<>
+export BBS_PASSWORD=<>   # Plain text password or token
+export GH_PAT=<>
+
+gh bbs2gh migrate-repo \
+  --bbs-server-url 'https://your-bitbucket-server' \
+  --bbs-project 'PROJECT' \
+  --bbs-repo 'repo-name' \
+  --github-org 'your-github-org' \
+  --github-repo 'destination-repo' \
+  --ssh-user 'service-account' \
+  --ssh-private-key '/path/to/private/key' \
+  --aws-bucket-name 'your-migration-bucket' \
+  --bbs-shared-home '/data/atlassian/bitbucket/shared'
+```
+
+**Sample output** — The tool returns a JSON response indicating migration status:
+
+```json
+{
+  "id": 44,
+  "initiator": { "name": "svc-account", "displayName": "svc-account", ... },
+  "progress": { "percentage": 0 },
+  "state": "INITIALISING",
+  "type": "com.atlassian.bitbucket.migration.export",
+  ...
+}
+```
+
+Review the migration log for success or failure. In our setup, the automation invoked this inside the container—no manual run. See Our Automation below.
+
+### 5.4 Alternative Tools and Approaches
+
+While bbs2gh was our preferred tool, it's worth understanding the full landscape. Migration from Bitbucket Server to GitHub is a two-phase process—**export** from the source and **import** to the destination—and each phase has multiple options.
+
+### 5.4.1 Export Options
+
+*Option 1: Bitbucket Server Migration API (used by bbs2gh)*
+
+This is what bbs2gh uses under the hood. A POST to the Bitbucket migration exports endpoint triggers archive creation:
+
+```bash
+curl --location --request POST \
+  'https://bitbucket.example.com/rest/api/latest/migration/exports' \
+  --header 'Authorization: Basic <credentials>' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "repositoriesRequest": {
+      "includes": [
+        { "projectKey": "PROJ", "slug": "repo-name" }
+      ]
+    }
+  }'
+```
+
+The response returns a migration job with state tracking (`INITIALISING` → `EXPORTING` → complete). The archive includes Git objects plus Bitbucket metadata (PRs, comments, reviews).
+
+*Option 2: bbs-exporter (deprecated)*
+
+bbs-exporter was the previous tool for exporting from Bitbucket Server. It is no longer maintained and not publicly accessible. It used simple GET calls to retrieve all data from a repository—commits, comments, pull requests—but operated at a much slower pace. For example, exporting a large monorepo took approximately 13 hours. The output was a `*.tar.gz` archive.
+
+```bash
+export BITBUCKET_SERVER_URL=https://bitbucket.example.com
+export BITBUCKET_SERVER_API_USERNAME=<USERNAME>
+export BITBUCKET_SERVER_API_PASSWORD=<PASSWORD>
+
+bundle exec exe/bbs-exporter -r PROJ/repo-name -o repo-name.tar.gz
+```
+
+We evaluated this early and ruled it out due to speed constraints at our scale.
+
+### 5.4.2 Import Options
+
+*Option 1: ghec-importer CLI*
+
+ghec-importer is the former CLI tool for importing data into GitHub. It leverages GraphQL APIs under the hood. The workflow: take the archive from the export step, upload it to GitHub's blob storage, and import. For authorization, create a GitHub personal access token with `repo`, `admin:org`, and `workflow` scopes.
+
+Repository renaming is supported via a `mappings.csv` file:
+
+```csv
+model_name,source_url,target_url,recommended_action
+repository,https://bitbucket.example.com/projects/PROJ/repos/repo-name,https://github.com/your-org/new-repo-name,RENAME
+```
+
+```bash
+ghec-importer import repo-name.tar.gz \
+  -a <GITHUB_TOKEN> \
+  -t your-org \
+  -m mappings.csv
+```
+
+*Option 2: GitHub Enterprise Cloud Importer UI*
+
+GitHub provides a web UI at `https://eci.github.com/` for running imports interactively. Useful for one-off migrations or verification, but not practical at scale.
+
+*Option 3: GraphQL APIs (direct)*
+
+For full control, you can drive the import process step-by-step via GitHub's GraphQL API. All calls are POST requests to `https://api.github.com/graphql` authenticated with a GitHub PAT. The flow:
+
+*Step 1 — Get the organization ID:*
+
+```graphql
+query($login: String!) {
+  organization(login: $login) {
+    login
+    id
+    name
+  }
+}
+```
+
+*Step 2 — Create a migration object:*
+
+```graphql
+mutation($organizationId: ID!) {
+  startImport(input: { organizationId: $organizationId }) {
+    migration {
+      uploadUrl
+      guid
+      id
+      state
+    }
+  }
+}
+```
+
+This returns a `state: "WAITING"` and an `uploadUrl` for the archive.
+
+*Step 3 — Upload the archive:*
+
+```bash
+curl --location --request POST '<uploadUrl>' \
+  --header 'Content-Type: application/gzip' \
+  --header 'Accept: application/vnd.github.wyandotte-preview+json' \
+  --header 'Authorization: Bearer <GITHUB_TOKEN>' \
+  --data-binary '@/path/to/repo-name.tar.gz'
+```
+
+*Step 4 — Prepare the import:*
+
+```graphql
+mutation($migrationId: ID!) {
+  prepareImport(input: { migrationId: $migrationId }) {
+    migration { guid, id, state }
+  }
+}
+```
+
+*Step 5 — Resolve conflicts (user mappings):*
+
+After preparation, the migration may enter a `CONFLICTS` state. Query the conflicts:
+
+```graphql
+query($login: String!, $guid: String!) {
+  organization(login: $login) {
+    migration(guid: $guid) {
+      guid
+      state
+      conflicts {
+        modelName
+        sourceUrl
+        targetUrl
+        recommendedAction
+      }
+    }
+  }
+}
+```
+
+This returns user conflicts—Bitbucket users that don't map to GitHub accounts. Resolve them with `addImportMapping`:
+
+```graphql
+mutation($migrationId: ID!) {
+  addImportMapping(input: {
+    migrationId: $migrationId,
+    mappings: [
+      {
+        modelName: "user",
+        sourceUrl: "https://bitbucket.example.com/users/jsmith",
+        targetUrl: "https://github.com/jsmith-gh",
+        action: MAP
+      },
+      {
+        modelName: "user",
+        sourceUrl: "https://bitbucket.example.com/bots/bitbucket.system-user",
+        targetUrl: "https://github.com/bitbucket.system-user",
+        action: SKIP
+      }
+    ]
+  }) {
+    migration { state, guid }
+  }
+}
+```
+
+Actions include `MAP` (link to a real GitHub user), `SKIP` (leave as mannequin), or `RENAME`.
+
+*Step 6 — Execute the import:*
+
+```graphql
+mutation($migrationId: ID!) {
+  performImport(input: { migrationId: $migrationId }) {
+    migration { guid, id, state }
+  }
+}
+```
+
+*Step 7 — Unlock imported repositories:*
+
+```graphql
+mutation($migrationId: ID!) {
+  unlockImportedRepositories(input: { migrationId: $migrationId }) {
+    migration { guid, id, state }
+    unlockedRepositories { nameWithOwner }
+  }
+}
+```
+
+This is the most flexible approach but also the most work to automate. We used bbs2gh because it wraps these APIs into a single command, but understanding the underlying GraphQL flow was essential for debugging failures and building retry logic around specific steps.
+
+### 5.4.3 CI Migration (Bamboo to GitHub Actions)
+
+For CI migration from Bamboo to GitHub Actions, see the [gh-actions-importer](https://github.com/github/gh-actions-importer) tool—covered in Part 3 of this series. Bamboo and SonarQube reconfiguration (after repos land in GitHub) is covered in section 7.
+
+---
+
+## 6. Our Automation
+
+---
+
+With prep and tools in place, the migration platform could run. Manual migration was never an option at our scale. The platform was built in two layers:
+
+1. **`github-migration-tools`** — Repository of scripts and tools (bbs2gh, validation, repository rules bootstrap). Containerized into a Docker image for deterministic runs across local, CI, and engineer machines.
+2. **`github-migration-workflows`** — Repository of GitHub Actions workflows that orchestrate migration steps. Separation allowed iterating on scripts without changing workflow structure, and vice versa.
+
+### 6.1 Workflow Catalog
+
+The workflows repository contained a set of purpose-built GitHub Actions workflows, each handling a specific phase of the migration lifecycle:
+
+![7. Workflow catalog](/assets/images/posts/2026/source-migration-bitbucket-to-github/07-workflows-list.png)
+
+| Workflow | Purpose |
+|----------|---------|
+| Pre-migration analysis | Collect repo stats (git-sizer, git-filter-repo, branch/PR/tag counts) |
+| Run - Simple migration | End-to-end simple migration (git objects only) |
+| Run - Complex migration | End-to-end complex migration (git + PRs + metadata) |
+| Run - Post migration | Execute all post-migration steps for a repo |
+| Export Migration Archive | Export archive from Bitbucket Server |
+| Import Migration Archive | Import archive into GitHub |
+| Grant/Revoke GitHub Migrator role | Manage migrator role for service accounts |
+| Post migration (Repository Variables) | Apply per-repo variables (Bamboo keys, Sonar config) |
+| Execute Simple migration | Standalone simple migration step |
+
+### 6.2 Self-Service Dispatch
+
+Migrations were triggered through GitHub Actions' workflow dispatch UI. An engineer selected a workflow, chose the branch (e.g., `uem-migrations`), and provided inputs:
+
+| Input | Description |
+|-------|-------------|
+| List of repos (.csv) | CSV file listing repositories to migrate |
+| Bitbucket Configuration | Project slug and repo slug (repo slug auto-populated from CSV) |
+| GitHub Configuration | Destination repo name (from CSV), GitHub org, Bitbucket instance (test or production) |
+
+![8. Workflow dispatch UI](/assets/images/posts/2026/source-migration-bitbucket-to-github/08-workflow-run-ui.png)
+
+This made migration self-service: any team member with access to the workflows repo could trigger a migration run without writing code or SSH-ing into servers.
+
+### 6.3 CSV-Driven Batching by Priority
+
+Repositories were organized into CSV files by migration priority, stored in the workflows repo under a structured path:
+
+```
+github-migration-workflows/
+  migration/
+    project-repos/
+      <github-org>/
+        P0/
+        P1/
+        P2/
+        Run-P0-PROJ1_Mar8_10AMEST.csv
+        Run-P0-PROJ2_Mar8_10AMEST.csv
+        ...
+```
+
+![9. Migration CSV batches by priority](/assets/images/posts/2026/source-migration-bitbucket-to-github/09-migration-csv-batches.png)
+
+Each CSV listed repositories for a specific Bitbucket project, timestamped by migration run (e.g., `Run-P0-AIRW_Mar8_10AMEST.csv`). P0 repositories migrated first with the tightest validation; P1 and P2 followed in subsequent batches. This structure gave us full traceability—we could see exactly which repos migrated in which batch, when, and in what order.
+
+### 6.4 Branch-per-Org Structure
+
+The workflows repository used branches to organize migration data by organization and team. For example, a `PROD/UEM` branch contained all migration artifacts—CSVs, pre-migration stats, post-migration configs—for that org's repositories. This kept migration data isolated per team and made it easy to track progress across orgs.
+
+Instructions and FAQ for running the migrations are documented in the workflows repository README.
+
+### 6.5 Building the Migration Platform
+
+With hundreds of repositories to migrate—and other teams watching to adopt the same approach—we needed migration to work as a platform, not a script. We built a migration automation combining the containerized `github-migration-tools` with the orchestration in `github-migration-workflows`. The architecture looked roughly like this:
+
+![10. Migration factory architecture](/assets/images/posts/2026/source-migration-bitbucket-to-github/10-migration-factory.png)
+
+The automation allowed us to run migrations in parallel, retry failures safely, validate repository integrity automatically, and bootstrap repositories with standardized configuration. Migration became a repeatable platform capability rather than a one-time effort.
+
+### 6.6 Dry Runs, Gotchas, and Lessons Learned
+
+GitHub's migration documentation [recommends performing a dry run for every repository](https://docs.github.com/en/migrations/overview/planning-your-migration-to-github#performing-a-dry-run-migration-for-every-repository). We took this seriously: every P0 and P1 repository went through a full dry run well ahead of the migration weekend. A dry run is a real migration to a temporary destination repo that gets deleted afterward—same tools, same automation, same validation. P2 (low-activity) repositories skipped individual dry runs since their risk profile was lower and failures could be retried without time pressure.
+
+Dry runs and the scale migration itself surfaced a set of gotchas that would have derailed the weekend if we hadn't caught them early:
+
+**1. Bitbucket archive creation is fragile.**
+Archive creation on Bitbucket Server failed intermittently—network timeouts, server load, and the single-archive-at-a-time constraint all contributed. We added retries with exponential backoff to the automation, and pre-created archives for low-activity repos days before the migration weekend. Don't assume archive creation will succeed on the first attempt.
+
+**2. One archive at a time is a hard constraint.**
+Bitbucket Server creates only one archive at a time. With hundreds of repos, this became our biggest bottleneck. The workaround—pre-creating archives in the days before migration—was critical to making the weekend timeline work.
+
+**3. Comment threading loses depth.**
+bbs2gh does not preserve arbitrarily deep comment nesting. Linked comment trees—comments on comments on comments—were flattened to two or three levels. The content was preserved, but the threading structure was not always identical. For most teams this was acceptable, but it's worth communicating before migration so nobody is surprised when reviewing old PRs.
+
+**4. GitHub APIs return 500s and throttle aggressively.**
+During the scale migration, we hit GitHub API rate limits and intermittent 500 errors—especially during post-migration steps like mannequin reclamation and repository rules bootstrap. Our workaround: rotate across multiple service accounts to distribute API calls, and build retry logic into every API interaction. A single PAT will not carry you through hundreds of repositories.
+
+**5. Access coordination takes longer than you think.**
+Getting the right permissions across Bitbucket, GitHub, blob storage, and SSH took weeks of back-and-forth with security, network, infrastructure, and identity teams. Firewall rules for blob storage access, SSH keys for Bitbucket servers, PAT provisioning with the right scopes, SSO configuration for the GitHub org—each required a different team and a different approval process. Start this early—it's on the critical path even though it doesn't feel like "real" migration work.
+
+**6. Reflog and gc must run on the source server, not locally.**
+Running `git reflog expire` and `git gc` on a local clone doesn't reclaim space on the Bitbucket server. The server manages Git objects in its own way (packing, replication, storage). Cleanup must target the server directly.
+
+**7. Git submodules break silently.**
+Repositories using git submodules that referenced Bitbucket URLs continued resolving after migration—until the old server was decommissioned. At that point, submodule fetches would fail with no obvious connection to the migration. We added submodule detection to pre-migration analysis to flag these repos, then updated `.gitmodules` post-migration to point to the new GitHub URLs.
+
+**8. Dry runs calibrate your timeline.**
+Beyond catching bugs, dry runs gave us timing data for each repository. We used this to plan parallelism, estimate the weekend schedule, and identify repos that needed extra remediation before the real migration.
+
+### 6.7 Migration Execution
+
+After weeks of preparation, auditing, and dry runs, the migration platform executed the migration of hundreds of repositories over a single weekend. We made all source repositories read-only during the migration to prevent new commits and ensure a consistent snapshot. The migration preserved complete git commit history, pull requests and reviews, comments and discussions, and authorship information. Where historical contributors did not map directly to GitHub accounts, GitHub mannequins preserved attribution until identities could be reconciled. Migration logs and validation checks ensured that repositories were migrated correctly.
+
+---
+
+## 7. Post-Migration
+
+---
+
+*Once repositories landed in GitHub, the work was not done.* Post-migration focused on making each repository fully operational: identity reconciliation, post-migration configuration (the template), repository rules (CODEOWNERS, branch protection), Bamboo and GitHub integration (build status, PR bot workflows), SonarQube reconfiguration, and developer onboarding. The sections below follow that flow.
+
+### 7.1 Reclaiming User Identities (Mannequins)
+
+When GitHub imports repositories, historical commit authors and PR participants that don't match a GitHub account are represented as "mannequins"—placeholder identities that preserve attribution. Organization admins can associate these mannequins with real GitHub accounts through the Organization Settings UI or via the GitHub Enterprise Importer CLI. We automated this using the user mappings collected during pre-migration, so the bulk of identity reconciliation happened without manual intervention.
+
+### 7.2 Post-Migration Configuration: The Template
+
+The core of post-migration automation was a `post-migration-inputs.json` file—a structured configuration that defined everything needed to make each migrated repository fully operational.
+
+
+The file was organized by **Bitbucket project slug** as the top-level key, with two levels of configuration:
+
+**Project-level defaults** — settings shared by all repos under a Bitbucket project:
+
+```json
+{
+  "PROJ": {
+    "default": {
+      "rename_master_to_main": "True",
+      "default_branch_name": "main",
+      "teams": {
+        "admin": ["g-platform-engineering"]
+      },
+      "secrets": {
+        "BAMBOO_SERVICE_ACCOUNT_USER": "os.getenv('BAMBOO_USER')",
+        "BAMBOO_SERVICE_ACCOUNT_PASSWORD": "os.getenv('BAMBOO_PASS')",
+        "SVC_BOT_GITHUB_PAT": "os.getenv('GH_TOKEN')"
+      }
+    }
+  }
+}
+```
+
+**Per-repo overrides** — repo-specific variables that connect each repository back to its CI and quality pipelines:
+
+```json
+{
+  "PROJ": {
+    "service-repo": {
+      "variables": {
+        "BAMBOO_MAIN_PLAN_KEY": "PLAN-KEY",
+        "CHILD_PLAN_KEYS": [""],
+        "BAMBOO_SPEC_ENABLED": "False",
+        "EXISTING_BAMBOO_LINKED_REPO_NAME": ["ServiceRepo"],
+        "BAMBOO_LINKED_REPO_ID": "4893056739",
+        "SONAR_DEFAULT_BRANCH": "main"
+      }
+    }
+  }
+}
+```
+
+This structure mapped the Bitbucket project hierarchy into GitHub's org and team model. For each project slug, the `default` block set branch policy (rename the default branch to `main`), team ownership (which GitHub team gets admin), and shared secrets. Each repo entry then added its specific Bamboo plan keys, linked repo IDs, and SonarQube branch configuration.
+
+The **Post migration (Repository Variables)** workflow consumed this JSON and applied all settings automatically per repo. This is what ensured Bamboo builds continued triggering against the right GitHub repository, SonarQube analysis pointed to the correct branch, and team ownership was correctly assigned—all without manual intervention.
+
+Building this configuration was one of the most time-consuming parts of pre-migration. Every repo's Bamboo plan key, linked repo name, and Sonar branch had to be collected and mapped. But the payoff was immediate: when the migration weekend arrived, post-migration was fully automated.
+
+### 7.3 Repository Rules Bootstrap
+
+Repositories were bootstrapped with repository rules configuration extracted during pre-migration—applied at the appropriate scope (repository, team, org, or company): team permissions, **CODEOWNERS** definitions, and branch protection rules. CODEOWNERS files define who must review changes to specific paths; we generated these from the mandatory reviewer rules captured during pre-migration. Branch protection enforced the same merge policies (required reviewers, status checks) that existed in Bitbucket. From a developer's perspective, repositories appeared in GitHub with familiar review workflows already in place. This was not accidental—it was the result of the config-driven automation we built during pre-migration and the template described in 7.2.
+
+### 7.4 Bamboo and GitHub Integration
+
+Once repositories were in GitHub, Bamboo build plans and GitHub repositories had to be reconfigured so CI continued to work. This involved changes on both sides—Bamboo plans and GitHub repo variables—plus workflow propagation and build status reporting.
+
+![12. CI integration flow](/assets/images/posts/2026/source-migration-bitbucket-to-github/12-ci-integration-flow.png)
+
+### 7.4.1 Bamboo Plan Changes
+
+For every build plan that previously used Bitbucket as the source:
+
+- **Remove Bitbucket PR bot** — The Bitbucket PR bot was no longer needed; its behavior was replaced by a GitHub workflow.
+- **Change source repository** — Update the plan's linked repository from the Bitbucket URL to the new GitHub repository URL.
+- **PreHook (first stage)** — Add a `curl` command to trigger a webhook that reports build status `InProgress` to GitHub when the build starts.
+- **PostHook** — Enable PostHook configuration for all plans so build completion (success/failure) is reported back to GitHub.
+
+These changes applied to both specs-enabled and non-specs plans; the difference was in the GitHub repo variables (see below).
+
+### 7.4.2 GitHub Repository Variables
+
+Each GitHub repository needed variables that connect it to its Bamboo build plan:
+
+| Variable | Specs-enabled plans | Non-specs plans |
+|----------|---------------------|-----------------|
+| `MAIN_PLAN_KEY` | Plan key | Plan key |
+| `BAMBOO_SPEC_ENABLED` | `True` | `False` |
+| `LINKED_REPO_ID` | Bamboo linked repository ID | Bamboo linked repository ID |
+
+We created a mapping (the `post-migration-inputs.json` in 7.2) as the source of truth for these key-value pairs.
+
+| Option | Approach |
+|--------|----------|
+| 1. Automated | **Post migration (Repository Variables)** workflow applied them automatically |
+| 2. Manual | Check in variables once repos are migrated |
+
+We chose automation so all repos were configured consistently.
+
+### 7.4.3 PR Bot Workflow Propagation
+
+![13. PR bot flow](/assets/images/posts/2026/source-migration-bitbucket-to-github/13-pr-bot-flow.png)
+
+A PR bot workflow adds component reviewers to PRs by default—replacing the Bitbucket PR bot behavior. This workflow had to be present in every migrated repository.
+
+| Option | Approach |
+|--------|----------|
+| 1. Org-level template | Repository template enforced at org level; new or migrated repos get the workflow automatically |
+| 2. Automation | Create PRs in all repos to add the workflow and merge them |
+
+We used automation for existing repos; org-level templates helped for new repos going forward.
+
+### 7.4.4 Build Status Webhook
+
+![14. Build status flow](/assets/images/posts/2026/source-migration-bitbucket-to-github/14-build-status-flow.png)
+
+Bamboo reports build status to GitHub via a `repository_dispatch` webhook:
+
+1. A workflow in a central repo listens for the event
+2. Bamboo triggers it with `curl` in the PreHook and PostHook
+3. The workflow updates the PR with the build status
+
+```bash
+curl -X POST "https://api.github.com/repos/<org>/<build-status-workflow-repo>/dispatches" \
+  --header 'Accept: application/vnd.github+json' \
+  --header 'Authorization: Bearer <TOKEN>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "event_type": "build_status",
+    "client_payload": {
+      "build_result_url": "<bamboo-build-url>",
+      "context": "<plan-name>",
+      "commit_id": "<commit-sha>",
+      "build_status": "InProgress",
+      "build_plan_key": "<plan-key>",
+      "build_number": "<build-number>",
+      "repo": "<github-repo-url>"
+    }
+  }'
+```
+
+The workflow receives this payload and updates the GitHub commit status for the PR. Build status then appears in the PR UI; developers click "Details" to open the Bamboo job.
+
+### 7.4.5 Build Status Reporting Flows
+
+Different build topologies required different handling:
+
+| Topology | Behavior |
+|----------|----------|
+| **Stop previous, run latest** | Builds kill the previous run and only run the latest commit. Status reported on latest commit. For ad-hoc multi-build runs, last build to complete updates status. |
+| **Sequential builds** | Builds run one after the other. Latest build marks PR as `InProgress` on new commit. Merge checks require Bamboo status on latest commit. Main builds report on the commit that triggered them. |
+
+### 7.5 SonarQube and GitHub Integration
+
+SonarQube needed to be reconfigured to use GitHub as the SCM source instead of Bitbucket.
+
+1. Create a GitHub App for the organization — see [SonarQube DevOps Platform Integration](https://docs.sonarsource.com/sonarqube/latest/devops-platform-integration/github-integration/)
+2. Configure SonarQube **Administration → Configuration → DevOps Platform Integration** with the GitHub App ID, client ID, and client secret
+3. Provision a service account with SonarQube admin privileges for API-driven updates across projects
+
+Post-migration, the **Post migration (Repository Variables)** workflow applied per-repo variables like `SONAR_DEFAULT_BRANCH` (from the template in 7.2) so each project's analysis pointed to the correct branch. PR decoration and quality gates continued working without manual intervention.
+
+### 7.6 Updating Git Submodules
+
+Repositories that used git submodules referencing Bitbucket URLs needed those references updated to point to the new GitHub URLs. These had been identified during pre-migration analysis. After migration, we updated the `.gitmodules` files to replace the old Bitbucket paths with their GitHub equivalents. Without this step, submodule fetches would silently fail—or worse, continue pulling from the old server if it was still reachable.
+
+### 7.7 Day of Migration
+
+*The migration weekend: what developers experienced and how to get started.*
+
+We ran automation for the migration—around 500+ repositories over a single weekend—without any developer disruption. For each repo under migration, the same flow was followed:
+
+![15. Per-repo migration flow](/assets/images/posts/2026/source-migration-bitbucket-to-github/15-per-repo-flow.png)
+
+Pre-migration, cleanup, and validation; then migration; then validation again; then deploying workflows; and validation once more. The automation ensured consistency across every repository. One of the most interesting aspects was how invisible it felt to many engineers. After the migration, several developers asked variations of the same question:
+
+> "Wait… are we already on GitHub?"
+
+From their perspective, repositories had simply appeared in GitHub with full history, pull requests, and comments intact. Below is the getting-started guidance we provided so developers could ramp up quickly.
+
+### 7.7.1 Getting Started
+
+**Accessing GitHub** — Engineers were onboarded to the production GitHub organization. Access is typically granted through your organization's identity or catalog portal (e.g., an internal app catalog). If you're in engineering and cannot access the org, follow your organization's troubleshooting steps—often documented in an internal wiki or self-service portal.
+
+**Setting up SSH** — You can reuse SSH keys from Bitbucket. Use the table below.
+
+| Step | Action |
+|------|--------|
+| 1. Locate key | `~/.ssh/` (Linux/Mac) or `%USERPROFILE%\.ssh` (Windows) |
+| 2. Add to GitHub | Settings → SSH and GPG keys → New SSH key |
+| 3. Paste | Paste the public key. Ensure no trailing newline; key must be a single line. |
+| 4. Tools | GitHub for Desktop, VS Code, Git CLI all work with the same credentials once configured. |
+
+```bash
+# Paths to public key
+# Linux/Mac:   ~/.ssh/id_ed25519.pub  or  ~/.ssh/id_rsa.pub
+# Windows:    %USERPROFILE%\.ssh\id_ed25519.pub
+```
+
+### 7.7.2 Developer View and Dashboard
+
+GitHub provides built-in views for tracking work:
+
+- **PRs you created** — `github.com/pulls` (or your instance's equivalent)
+- **PRs assigned to you** — `github.com/pulls/assigned`
+- **PRs where you're the reviewer** — `github.com/pulls/review-requested`
+
+These replace the equivalent Bitbucket PR and dashboard views.
+
+### 7.7.3 Bitbucket to GitHub: What Changed
+
+| Aspect | Bitbucket | GitHub |
+|--------|-----------|--------|
+| Repo naming | Project/repo | Repo name only (same as before) |
+| Organization | Projects | Single org (no project concept) |
+| PRs and history | ✓ | ✓ Migrated |
+| Large files in history | Some repos | Few repos had history changed (SHA) |
+
+**Note on history changes** — In repositories where we removed large files (>100MB) during pre-migration cleanup, commit SHAs changed. Those repos required a fresh clone. For most repos, updating the remote was sufficient: `git remote set-url origin <new-github-url>`. See [Git remote documentation](https://git-scm.com/docs/git-remote) for details.
+
+### 7.7.4 Pull Request Workflow
+
+**Reviewers** — Merge checks and most Bitbucket merge rules were migrated to GitHub and standardized across repositories. A PR bot adds component reviewers by default. Permission to merge (e.g., managers and above) was preserved from Bitbucket.
+
+**Build status** — Bamboo build status appears in the PR. Click the build "Details" link to open the corresponding Bamboo job in a new tab. (See Bamboo and GitHub Integration above for how this was configured.)
+
+**Bamboo and GitHub** — Build plans pull from GitHub; commits and PRs link bidirectionally. You can view a commit from Bamboo and jump to the GitHub PR, and vice versa. See [GitHub and Bamboo integration](https://confluence.atlassian.com/bamboo/github-integration-289276792.html) for details.
+
+The goal had always been to make the transition feel seamless—and if the migration appeared simple from the outside, it meant the platform engineering work behind it had succeeded.
+
+---
+
+## 8 Outcomes
+
+---
+
+By the end of the migration:
+
+- **500+ repositories** moved to GitHub over a single weekend
+- **Full collaboration history preserved** — commits, PRs, comments, reviews, and authorship
+- **Repository health improved** — cleanup during pre-migration eliminated years of accumulated bloat
+- **Clone and checkout times dropped** — developers and CI systems both saw immediate improvements
+- **Other teams adopted the model** — the tooling, workflows, and migration factory we built became a shared platform capability used by teams beyond our own
+- **CI Pipeline intact** — the CI pipeline was intact and continued to work without any manual intervention
+The developer platform was now positioned for the next stage of modernization—transitioning CI from Bamboo to GitHub Actions. What started as a platform initiative for one group became a repeatable pattern for the broader organization.
+
+*Next in the series:  Part 3: CI Migration (coming soon)*
