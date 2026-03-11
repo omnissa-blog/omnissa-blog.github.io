@@ -1,0 +1,56 @@
+export const metadata = {
+  layout: "post",
+  title: "Modernizing Our Developer Platform",
+  date: "2026-03-01",
+  categories: ["Platform Engineering", "DevOps"],
+  author: "svudutala",
+  image: "/assets/images/posts/2026/modernizing-our-developer-platform/modern-engineering-services.png",
+  featured: true,
+  description:
+    "The first in a three-part series on how we modernized our developer platform—from source control migration to CI modernization. Goals, constraints, and the platform engineering approach.",
+  tags: ["Platform Engineering", "GitHub", "CI"],
+};
+
+# Modernizing Our Developer Platform
+
+## Introduction
+
+As a large engineering organization, we were already in the middle of modernizing our product. Teams were evolving the software architecture, modernizing services, and investing in long-term scalability. To build these first-class engineering solutions, we needed a platform that could keep pace—one that reduced friction instead of adding it. Our developer platform had to evolve alongside the product.
+
+The developer platform spans source control, continuous integration (CI), code quality analysis, artifact management, secrets management, and the integrations/plugins. Source control and CI sit at the center of every engineering workflow—every pull request, every build, every quality gate, and every release flows through these systems. If we wanted to improve engineering velocity across teams, modernizing this layer was one of the earliest and most foundational steps.
+
+Around the same time, the VMware End-User Computing business was preparing for its transition to Omnissa, creating a natural moment to rethink parts of the engineering platform and position it for the next phase of growth.
+
+GitHub Enterprise had already been selected as the future platform for source control and collaboration.
+
+But the engineering challenge was not simply moving repositories or swapping CI tools. We needed to migrate hundreds of active repositories while preserving collaboration history, maintaining CI continuity for a live SaaS platform, and minimizing disruption for engineers actively shipping production software.
+
+We approached this effort with platform engineering principles in mind: automation first, repeatability over one-off fixes, and self-service wherever possible.
+
+This is the first in a three-part series describing how we modernized our developer platform—from source control migration to CI modernization.
+
+## Goals and Constraints
+
+From the start, the effort was shaped by several non-negotiable constraints:
+
+**CI and delivery could not stop.**
+Our SaaS services continuously ship features and fixes to customers. CI pipelines were part of the production delivery path, meaning development and releases had to continue throughout the migration.
+
+**Preserve collaboration history.**
+Commit history, pull requests, comments, and reviews contain years of engineering context. Losing that information was not acceptable.
+
+**Minimize developer disruption.**
+While engineers would eventually need to get used to GitHub, the migration itself could not block developers from doing their daily work.
+
+**Prepare the platform for the future.**
+The goal was not simply to relocate code. The migration was an opportunity to improve repository health, repository policies, and automation processes across the organization.
+
+Meeting these goals required approaching the migration as a platform engineering initiative—not simply a tooling change.
+
+## Series Overview
+
+| Part | Title | Link |
+|------|-------|------|
+| 1 | Modernizing Our Developer Platform | This post |
+| 2 | Source Migration: Bitbucket to GitHub | [Read →](/story/2026-03-01-source-migration-bitbucket-to-github) |
+| 3 | CI Migration | Coming soon |
