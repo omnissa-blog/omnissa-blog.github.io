@@ -12,13 +12,15 @@ export const metadata = {
 
 ## Introduction
 
-In modern mobile development and automation, dependencies on server-side implementations—such as APIs, authentication services, and orchestration layers—often slow down progress, especially when building enterprise-grade apps that rely on complex integrations. Mocking these backend services offers a powerful way to decouple development from backend readiness. This technique enables teams to move faster, test more reliably, and build resilient applications by injecting controlled failures to validate app behavior, performance, and feature coverage.
+In modern mobile development and automation, dependencies on server-side implementations—such as APIs, authentication services, and orchestration layers—often slow down progress, especially when building enterprise-grade apps that rely on complex integrations. Mocking these backend services offers a powerful way to decouple development from backend readiness, allowing teams to validate app behavior, performance, and feature coverage through controlled failure injection.
+
+**How backend mocking enables reliable, performant mobile experiences across platforms:** By using mock servers, teams can simulate real-world scenarios, control response times, and eliminate backend bottlenecks—resulting in faster development cycles and more resilient applications.
 
 ## Real-World Context: Workspace ONE UEM, Greenbox/Hub Core Services and WS1 HUB
 
 This mocking strategy was implemented in the context of **Workspace ONE UEM**, a unified endpoint management solution by Omnissa that enables IT to manage all endpoints—mobile, desktop, rugged, and IoT—from a single platform. It was also applied to **Greenbox/Hub Core Services**, which is one of the core members of Hub Services family, which is responsible for supporting multiple capabilities offered by WS1 Intelligent Hub Platform.
 
-The mobile applications involved included the **Android HUB** and **iOS HUB** apps, which serve as enterprise mobility gateways for users to access corporate resources securely.
+The mobile applications involved included the **Android HUB** and **iOS HUB** apps, which serve as enterprise mobility gateways for users to access corporate resources securely. These Hub apps depend on many UEM and Hub APIs—making a stateful mock server essential for simulating full enrollment flows and feature validation. Having successfully implemented this mocking approach for Android and iOS, we are now actively extending it to support the **macOS HUB** platform as well.
 
 ![Mocking strategy](/assets//images/posts/2025/mocking-framework.png "Backend Mocking Architecture for Workspace ONE Mobile Apps")
 
@@ -44,7 +46,7 @@ These improvements significantly enhanced our ability to deliver reliable and pe
 
 We faced several challenges, such as dealing with hardcoded backend configurations, adapting the app’s UI when Hub services are enabled or disabled, and managing complex scenarios like enabling Hub services on already enrolled devices. Testing flows involving the deployment of a large number of applications and intricate configuration combinations across UEM and Hub services often required manual setup and maintenance of complicated, static configs.
 
-To overcome these challenges, we also mocked key backend services provided by Workspace ONE UEM and Greenbox/Hub Core Services/Hub Core Services. This enabled faster development cycles, consistent and reliable testing environments, and the ability to simulate complex service flows such as secure-channel implementation, Mobile Threat Defense (MTD), and various Workspace ONE SDK settings—ensuring HUB apps could be validated across a wide range of scenarios.
+To overcome these challenges, we also mocked key backend services provided by Workspace ONE UEM and Greenbox/Hub Core Services. This enabled faster development cycles, consistent and reliable testing environments, and the ability to simulate complex service flows such as secure-channel implementation, Mobile Threat Defense (MTD), and various Workspace ONE SDK settings—ensuring HUB apps could be validated across a wide range of scenarios.
 
 ---
 
@@ -75,8 +77,6 @@ Mocking involves creating stand-ins, or mock servers, for your backend systems. 
 ---
 
 ## Implementing a Spring Boot Mock Server
-
-
 
 ### Why Spring Boot Over Existing Tools?
 
@@ -222,12 +222,9 @@ if (enabled) {
 }
 ```
 
-### Implementing Mocking in Our CI/CD Pipelines
-To ensure our mobile applications are robust and reliable, we've integrated this mocking strategy into our CI/CD pipelines for both our Android and iOS projects. This allows us to test for a wide range of possibilities, from introducing intentional delays to simulating real-world server failures. The mock server allows us to create these scenarios in a controlled and repeatable environment, a task that would be incredibly difficult to achieve with live backend services. By doing so, we ensure that every code change is validated against various backend conditions, providing us with confidence in our application's resilience.
+### CI/CD Integration
 
-### CI/CD Pipelines
-
-Integrating the mock server into your CI/CD pipeline allows you to run automated tests against a wide range of backend conditions in a controlled and repeatable environment. This ensures every code change is validated for resilience before it reaches users.
+Integrating the mock server into your CI/CD pipeline allows you to run automated tests against a wide range of backend conditions in a controlled and repeatable environment. This ensures every code change is validated for resilience before it reaches users. For mobile projects across platforms (Android, iOS, and beyond), this integration enables you to test for a wide range of scenarios—from introducing intentional delays to simulating real-world server failures—in a consistent, repeatable environment. This would be incredibly difficult to achieve with live backend services alone, giving you confidence that your application remains resilient across all conditions.
 
 ### Maintainability with Source Control
 
