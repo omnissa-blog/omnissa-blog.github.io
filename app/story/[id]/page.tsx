@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getAllPosts, getPost } from "@/lib/server-utils";
+import { getAllPostSlugs, getPost } from "@/lib/server-utils";
 import { PostHeader } from "@/components/post-header";
 import { PostImage } from "@/components/post-image";
 import { PostTags } from "@/components/post-tags";
@@ -7,10 +7,8 @@ import { Metadata } from "next";
 import { AUTHORS } from "@/lib/authors";
 
 export async function generateStaticParams() {
-  const posts = await getAllPosts();
-  return posts.map((post) => ({
-    id: post.slug,
-  }));
+  const { main } = getAllPostSlugs();
+  return main.map((id) => ({ id }));
 }
 
 export async function generateMetadata({
