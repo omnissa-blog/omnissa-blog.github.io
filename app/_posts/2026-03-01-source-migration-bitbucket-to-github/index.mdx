@@ -1,0 +1,192 @@
+export const metadata = {
+  layout: "post",
+  title: "Source Migration: Bitbucket to GitHub",
+  date: "2026-03-01",
+  categories: ["Platform Engineering", "DevOps", "GitHub"],
+  author: "svudutala",
+  featured: false,
+  image: "/assets/images/posts/2026/source-migration-bitbucket-to-github/02-migration-phases.png",
+  description:
+    "How we migrated 500+ repositories from Bitbucket to GitHub over a single weekend while preserving full collaboration history and positioning the platform for the next stage of modernization.",
+  tags: ["Bitbucket", "GitHub", "Migration", "Platform Engineering", "DevOps"],
+};
+
+# Source Migration: Bitbucket to GitHub
+
+## Overview
+
+As part of our developer platform modernization, we migrated 500+ active repositories from Bitbucket to GitHub—without disrupting ongoing development or CI pipelines.
+
+This was not a repository transfer. It was a live platform transition:
+- Hundreds of developers continued contributing daily—shipping SaaS features and bug fixes without interruption
+- CI pipelines remained operational
+- Collaboration history (PRs, reviews, comments) was fully preserved
+
+The migration was executed over a single weekend, backed by weeks of preparation, automation, and cross-team coordination.
+
+This document focuses on how we executed the migration at scale—the decisions, structure, and operating model that made it possible.
+
+## Execution Complexity
+
+The challenge was not defining constraints—it was executing against them at scale without breaking active development.
+
+Key complexities included:
+
+- Coordinating hundreds of repositories with different sizes, histories, and ownership
+- Running migration alongside active development—without creating drift or conflicts
+- Ensuring consistency in repository rules, permissions, and structure post-migration
+- Eliminating manual effort to avoid errors during a high-volume migration
+- Managing a diverse repository landscape—from highly active to less active—each with different risk profiles
+- Reconciling inconsistent rules and permission models that had evolved differently across teams over time
+- Mapping hundreds of historical contributors to GitHub identities while preserving attribution
+
+This required treating the migration as a repeatable, automated system, not a one-time activity.
+
+## Execution Model: Parallel Workstreams
+
+To execute within a constrained timeline, we structured the work into parallel streams:
+
+![1. Execution Model: Parallel Workstreams](/assets/images/posts/2026/source-migration-bitbucket-to-github/03-team-workstreams.png)
+
+- **Source Preparation** — Repository cleanup, access validation, large file handling, and readiness checks
+- **Destination Setup (GitHub)** — Organization structure, team mapping, permissions, and baseline policies
+- **Migration Automation** — Tooling, orchestration workflows, batching strategies, and execution pipelines
+- **Post-Migration Enablement** — Repository rules, identity mapping, CI integration, and developer onboarding
+
+This structure allowed teams to move independently while staying aligned on outcomes—avoiding bottlenecks inherent in a sequential approach.
+
+## Migration Phases
+
+We divided the migration into three clear phases:
+
+![2. Migration phases](/assets/images/posts/2026/source-migration-bitbucket-to-github/02-migration-phases.png)
+
+**Pre-Migration**
+
+- Repository analysis and cleanup
+- Large blob removal and LFS alignment
+- Branch pruning and standardization
+- Extraction of repository rules and configurations
+
+**Migration**
+
+- Execution using automated workflows
+- Repository batching and orchestration
+- Validation of migrated data and metadata
+
+**Post-Migration**
+
+- Reapplying repository rules and protections
+- Identity mapping (user reconciliation)
+- CI/CD integration and validation
+- Developer onboarding and environment readiness
+
+Separating these phases ensured issues were caught early, execution remained predictable, and post-migration was fully operational—not an afterthought.
+
+For each repository, the same flow was followed:
+
+![3. Migration phases expanded](/assets/images/posts/2026/source-migration-bitbucket-to-github/05-migration-phases-expanded.png)
+
+| Phase | Sub-blocks |
+|-------|------------|
+| **Pre-Migration** | Repo analysis & sizing, Cleanup, Repository rules extraction |
+| **Migration** | Export from Bitbucket, Import to GitHub, Validation |
+| **Post-Migration** | Mannequins (reclaim identities), Repository rules bootstrap, Workflow deployment |
+
+### Migration Strategy: Simple vs Complex
+
+Within the migration phase, the first critical decision was choosing the type of migration.
+
+![1. Migration type decision](/assets/images/posts/2026/source-migration-bitbucket-to-github/01-migration-type-decision.png)
+
+| Capability | Code-Only Migration | Full-Fidelity Migration |
+|------------|---------------------|-------------------------|
+| Code & commit history | ✓ | ✓ |
+| Tags & LFS | ✓ | ✓ |
+| Pull requests | | ✓ |
+| Reviews & comments | | ✓ |
+| Integrations (hooks, JIRA) | | ✓ |
+
+- **Code-only migration** is simpler and faster, but loses collaboration history
+- **Full-fidelity migration** preserves how teams actually work
+
+For our organization, collaboration history was non-negotiable. Years of pull request discussions and reviews contained critical engineering context.
+
+We chose full-fidelity migration, using GitHub Enterprise Importer for Bitbucket Server.
+
+This decision significantly increased complexity—but ensured continuity for engineers.
+
+## Implementation Details
+
+For a deeper technical dive, read the phases in order (1, 2, 3), then automation (4) to see how we orchestrated it at scale:
+
+| Serial Number | Title | Link |
+|------|-------|------|
+| 1 | Pre-Migration Steps | [Read →](/story/2026-03-01-source-migration-bitbucket-to-github/1-pre-migration) |
+| 2 | Migration: Bitbucket to GitHub | [Read →](/story/2026-03-01-source-migration-bitbucket-to-github/2-migration) |
+| 3 | Post-Migration Setup | [Read →](/story/2026-03-01-source-migration-bitbucket-to-github/3-post-migration) |
+| 4 | Our Automation (orchestrates all phases) | [Read →](/story/2026-03-01-source-migration-bitbucket-to-github/4-automation) |
+
+## What Made This Work
+
+Several factors were critical to executing the migration successfully:
+
+- **Automation-first approach** — manual execution was not viable at this scale
+- **Clear ownership across workstreams** — avoided coordination bottlenecks
+- **Strong pre-migration discipline** — most issues were resolved before execution
+- **Phased execution model** — reduced risk and improved predictability
+
+Without these, the migration would not have been feasible within the timeline.
+
+## Outcomes
+
+The migration achieved its goals without compromising delivery:
+
+
+- **500+ repositories** migrated in a single weekend
+- **Full collaboration history preserved** — PRs, comments, reviews, and authorship
+- **Repository health improved** through cleanup and standardization
+- **Faster clone and checkout times** across developer and CI environments
+- **Reusable migration tooling** adopted across the organization, enabling 1,000+ repositories to follow a standardized model and extend to other source control systems, including GitLab, Subversion (SVN), and Perforce.
+- **CI pipelines remained fully operational** with no disruption
+
+## What This Enabled
+
+With source control standardized on GitHub, we established a foundation for the next phase of platform evolution:
+
+- CI modernization (Bamboo → GitHub Actions)
+- Standardized repository policies and automation
+- Improved developer experience across teams
+
+This migration was not just a transition—it established a repeatable platform capability for the organization.
+
+## Acknowledgements
+
+Thanks to this wonderful team who turned this around quickly—and the many others involved!
+
+<div className="flex flex-nowrap justify-center items-end gap-x-8 overflow-x-auto py-2 my-6">
+  {[
+    { name: "Anand Arya", img: "/assets/images/avatar/ananda3-avatar.png" },
+    { name: "Chinua", img: "/assets/images/avatar/ichinua-avatar.png" },
+    { name: "Huan Wang", initials: "HW" },
+    { name: "Ira Porchia", img: "/assets/images/avatar/iporchia-avatar.png" },
+    { name: "Karthik Donthy", img: "/assets/images/avatar/kdonthy-avatar.png" },
+    { name: "Niranjan Kunda", img: "/assets/images/avatar/nkunda-avatar.png" },
+    { name: "Shriram Jaju", img: "/assets/images/avatar/sjaju-avatar.png" },
+    { name: "Vikesh Kumar", img: "/assets/images/avatar/vikeshk-avatar.png" }
+  ].map((person) => (
+    <div key={person.name} className="flex flex-col items-center w-16 shrink-0">
+      {person.img ? (
+        <img src={person.img} alt={person.name} className="w-10 h-10 rounded-full object-cover" />
+      ) : (
+        <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-700">
+          {person.initials}
+        </div>
+      )}
+      <span className="text-xs font-medium text-gray-700 mt-1 text-center whitespace-nowrap leading-tight">{person.name}</span>
+    </div>
+  ))}
+</div>
+
+---
+### *Next in the series: Part 3: CI Migration (coming soon)*
