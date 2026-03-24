@@ -80,6 +80,12 @@ export const AUTHORS: Record<string, Author> = {
     avatar: "/assets/images/avatar/kyankov-avatar.webp",
     email: "kyankov@omnissa.com",
   },
+  svudutala: {
+    name: "Sai Kiran Vudutala",
+    display_name: "Sai Kiran Vudutala",
+    avatar: "/assets/images/avatar/svudutala-avatar.png",
+    email: "svudutala@omnissa.com",
+  },
   nkini: {
     name: "Nagendra Kini",
     display_name: "Nagendra Kini",
