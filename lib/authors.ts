@@ -85,5 +85,11 @@ export const AUTHORS: Record<string, Author> = {
     display_name: "Sai Kiran Vudutala",
     avatar: "/assets/images/avatar/svudutala-avatar.png",
     email: "svudutala@omnissa.com",
+  },
+  nkini: {
+    name: "Nagendra Kini",
+    display_name: "Nagendra Kini",
+    avatar: "/assets/images/avatar/nkini-avatar.png",
+    email: "nkini@omnissa.com",
   }
 };
