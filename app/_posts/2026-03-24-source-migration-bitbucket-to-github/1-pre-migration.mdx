@@ -1,7 +1,7 @@
 export const metadata = {
   layout: "post",
   title: "Pre-Migration Steps — Source Migration: Bitbucket to GitHub",
-  date: "2026-03-01",
+  date: "2026-03-24",
   categories: ["Platform Engineering", "DevOps", "GitHub"],
   author: "svudutala",
   image: "/assets/images/posts/2026/source-migration-bitbucket-to-github/02-migration-phases-pre-highlight.png",
@@ -13,7 +13,7 @@ export const metadata = {
 
 ---
 
-[← Back to overview](/story/2026-03-01-source-migration-bitbucket-to-github)
+[← Back to overview](/story/2026-03-24-source-migration-bitbucket-to-github)
 
 ---
 
@@ -46,7 +46,7 @@ Before migrating anything, we needed to understand what we were working with. Ma
 
 We built tooling to analyze each repository (size, blobs, LFS candidates, branches) and produce a migration readiness report. Repositories that triggered warnings were flagged for remediation.
 
-This analysis was fully automated. All the tools—`git-sizer`, `git-filter-repo`, branch/PR/tag stats collection, and submodule detection—were baked into the containerized `github-migration-tools` Docker image. The **Pre-migration analysis** workflow invoked this container for each repository and committed results to the workflows repo. See [Our Automation](/story/2026-03-01-source-migration-bitbucket-to-github/4-automation) for the workflow catalog.
+This analysis was fully automated. All the tools—`git-sizer`, `git-filter-repo`, branch/PR/tag stats collection, and submodule detection—were baked into the containerized `github-migration-tools` Docker image. The **Pre-migration analysis** workflow invoked this container for each repository and committed results to the workflows repo. See [Our Automation](/story/2026-03-24-source-migration-bitbucket-to-github/4-automation) for the workflow catalog.
 
 The output was stored under a structured path:
 
@@ -205,5 +205,5 @@ Before running migration for a repository, gather the following. The analysis wo
 | Destination repo | Target org and repo name in GitHub |
 
 ---
-Next: [Migration](/story/2026-03-01-source-migration-bitbucket-to-github/2-migration)
+Next: [Migration](/story/2026-03-24-source-migration-bitbucket-to-github/2-migration)
 

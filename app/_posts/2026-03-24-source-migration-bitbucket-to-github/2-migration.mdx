@@ -1,7 +1,7 @@
 export const metadata = {
   layout: "post",
   title: "Bitbucket to GitHub Repo Migration — Source Migration",
-  date: "2026-03-01",
+  date: "2026-03-24",
   categories: ["Platform Engineering", "DevOps", "GitHub"],
   author: "svudutala",
   image: "/assets/images/posts/2026/source-migration-bitbucket-to-github/02-migration-phases-migration-highlight.png",
@@ -13,7 +13,7 @@ export const metadata = {
 
 ---
 
-[← Back to overview](/story/2026-03-01-source-migration-bitbucket-to-github)
+[← Back to overview](/story/2026-03-24-source-migration-bitbucket-to-github)
 
 ---
 
@@ -36,7 +36,7 @@ export const metadata = {
 
 ---
 
-This section covers the migration execution phase—the Bitbucket-to-GitHub pathway for complex migration—including tools and how we moved hundreds of repositories while preserving full collaboration history. For orchestration at scale, see [Our Automation](/story/2026-03-01-source-migration-bitbucket-to-github/4-automation).
+This section covers the migration execution phase—the Bitbucket-to-GitHub pathway for complex migration—including tools and how we moved hundreds of repositories while preserving full collaboration history. For orchestration at scale, see [Our Automation](/story/2026-03-24-source-migration-bitbucket-to-github/4-automation).
 
 ## 1. Migration Concepts
 
@@ -48,7 +48,7 @@ Migration from Bitbucket Server to GitHub is a two-phase process: **export** fro
 
 Different tools handle different parts of this flow. Some do both export and import in one step (e.g., bbs2gh); others require separate export and import tools. Each tool has its own requirements—for example, bbs2gh needs blob storage (AWS or Azure) because GitHub's import service runs in the cloud and cannot reach your internal Bitbucket Server.
 
-Before running migration, ensure [Pre-Migration Steps](/story/2026-03-01-source-migration-bitbucket-to-github/1-pre-migration) are complete—analysis, cleanup, rules extraction, and the per-repository readiness checklist.
+Before running migration, ensure [Pre-Migration Steps](/story/2026-03-24-source-migration-bitbucket-to-github/1-pre-migration) are complete—analysis, cleanup, rules extraction, and the per-repository readiness checklist.
 
 ---
 
@@ -134,7 +134,7 @@ To run bbs2gh, you need a machine or container with:
 - **Blob storage credentials** — AWS or Azure; bbs2gh uploads the archive before GitHub imports it
 - **GitHub CLI with gh-bbs2gh** — `gh extension install github/gh-bbs2gh`
 
-Our `github-migration-tools` Docker image packages all of this—bbs2gh, GitHub CLI, SSH config, and AWS/Azure CLI—for deterministic runs. For our migration runner architecture and how we orchestrated it at scale, see [Our Automation](/story/2026-03-01-source-migration-bitbucket-to-github/4-automation).
+Our `github-migration-tools` Docker image packages all of this—bbs2gh, GitHub CLI, SSH config, and AWS/Azure CLI—for deterministic runs. For our migration runner architecture and how we orchestrated it at scale, see [Our Automation](/story/2026-03-24-source-migration-bitbucket-to-github/4-automation).
 
 ### 3.6 Running a Migration
 
@@ -173,7 +173,7 @@ gh bbs2gh migrate-repo \
 }
 ```
 
-Review the migration log for success or failure. In our setup, the automation invoked this inside the container—no manual run. See [Our Automation](/story/2026-03-01-source-migration-bitbucket-to-github/4-automation).
+Review the migration log for success or failure. In our setup, the automation invoked this inside the container—no manual run. See [Our Automation](/story/2026-03-24-source-migration-bitbucket-to-github/4-automation).
 
 ---
 
@@ -367,4 +367,4 @@ mutation($migrationId: ID!) {
 This is the most flexible approach but also the most work to automate. We used bbs2gh because it wraps these APIs into a single command, but understanding the underlying GraphQL flow was essential for debugging failures and building retry logic around specific steps.
 
 ---
-Next: [Post-Migration](/story/2026-03-01-source-migration-bitbucket-to-github/3-post-migration)
+Next: [Post-Migration](/story/2026-03-24-source-migration-bitbucket-to-github/3-post-migration)

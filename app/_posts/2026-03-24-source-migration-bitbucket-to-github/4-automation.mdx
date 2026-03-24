@@ -1,7 +1,7 @@
 export const metadata = {
   layout: "post",
   title: "Our Automation — Source Migration: Bitbucket to GitHub",
-  date: "2026-03-01",
+  date: "2026-03-24",
   categories: ["Platform Engineering", "DevOps", "GitHub"],
   author: "svudutala",
   image: "/assets/images/posts/2026/source-migration-bitbucket-to-github/16-automation-flow.png",
@@ -13,7 +13,7 @@ export const metadata = {
 
 ---
 
-[← Back to overview](/story/2026-03-01-source-migration-bitbucket-to-github)
+[← Back to overview](/story/2026-03-24-source-migration-bitbucket-to-github)
 
 ---
 
@@ -31,7 +31,7 @@ export const metadata = {
 
 ---
 
-With prep and tools in place, the migration platform could run. Manual migration was never an option at our scale. This automation spans all three phases—pre-migration analysis ([Pre-Migration Steps](/story/2026-03-01-source-migration-bitbucket-to-github/1-pre-migration)), migration execution ([Migration](/story/2026-03-01-source-migration-bitbucket-to-github/2-migration)), and post-migration setup ([Post-Migration](/story/2026-03-01-source-migration-bitbucket-to-github/3-post-migration)). The platform was built in two layers:
+With prep and tools in place, the migration platform could run. Manual migration was never an option at our scale. This automation spans all three phases—pre-migration analysis ([Pre-Migration Steps](/story/2026-03-24-source-migration-bitbucket-to-github/1-pre-migration)), migration execution ([Migration](/story/2026-03-24-source-migration-bitbucket-to-github/2-migration)), and post-migration setup ([Post-Migration](/story/2026-03-24-source-migration-bitbucket-to-github/3-post-migration)). The platform was built in two layers:
 
 1. **`github-migration-tools`** — Repository of scripts and tools (bbs2gh, validation, repository rules bootstrap). Containerized into a Docker image for deterministic runs across local, CI, and engineer machines.
 2. **`github-migration-workflows`** — Repository of GitHub Actions workflows that orchestrate migration steps. Separation allowed iterating on scripts without changing workflow structure, and vice versa.
@@ -123,7 +123,7 @@ ssh-keygen -t ed25519 -f ~/.ssh/id_ghmigration -C "service-account@your-bitbucke
 ssh-copy-id -i ~/.ssh/id_ghmigration.pub service-account@your-bitbucket-server
 ```
 
-For bbs2gh requirements and the manual `gh bbs2gh migrate-repo` invocation, see [Migration](/story/2026-03-01-source-migration-bitbucket-to-github/2-migration).
+For bbs2gh requirements and the manual `gh bbs2gh migrate-repo` invocation, see [Migration](/story/2026-03-24-source-migration-bitbucket-to-github/2-migration).
 
 ### 1.6 Dry Runs, Gotchas, and Lessons Learned
 
@@ -160,4 +160,4 @@ Beyond catching bugs, dry runs gave us timing data for each repository. We used 
 After weeks of preparation, auditing, and dry runs, the migration platform executed the migration of hundreds of repositories over a single weekend. We made all source repositories read-only during the migration to prevent new commits and ensure a consistent snapshot. The migration preserved complete git commit history, pull requests and reviews, comments and discussions, and authorship information. Where historical contributors did not map directly to GitHub accounts, GitHub mannequins preserved attribution until identities could be reconciled. Migration logs and validation checks ensured that repositories were migrated correctly.
 
 ---
-### Next: [Back to overview](/story/2026-03-01-source-migration-bitbucket-to-github)
+### Next: [Back to overview](/story/2026-03-24-source-migration-bitbucket-to-github)
