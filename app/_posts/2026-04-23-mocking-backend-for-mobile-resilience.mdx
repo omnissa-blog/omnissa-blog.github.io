@@ -1,7 +1,7 @@
 export const metadata = {
   layout: "post",
   title: "Building Reliable, Performant Mobile Experiences Across Platforms",
-  date: "2025-09-30",
+  date: "2026-04-23",
   categories: ["Automation", "CI/CD", "engineering"],
   author: "cbalabhadrapat",
   image: "/assets/images/posts/2025/mocking-header.png",
@@ -63,26 +63,15 @@ Mocking empowers you to proactively address these vulnerabilities, ensuring your
 
 ---
 
-## Mocking to the Rescue: Liberating Your Development Workflow
-
-Mocking involves creating stand-ins, or mock servers, for your backend systems. Instead of relying on the actual backend, your app interacts with these mock servers, which deliver pre-programmed responses based on the requests they receive.
-
-### Why Mocking is a Game-Changer
-
-* **Accelerated Development**: Developers can forge ahead with feature development without waiting for the backend to catch up.
-* **Simplified Automation Testing**: Mocking makes it effortless to replicate a wide array of user scenarios and configurations in your testing environment.
-* **Maintenance Made Easy**: Mock servers provide a lightweight, controlled environment, so you don't need to grapple with complex backend systems just for testing.
-* **Enhanced Testing Capabilities**: You can easily explore edge cases and error scenarios that might be difficult to reproduce in a live environment.
-
----
-
 ## Implementing a Spring Boot Mock Server
 
 ### Why Spring Boot Over Existing Tools?
 
 Before diving into implementation, it's worth addressing: why build a custom Spring Boot server instead of using existing mocking tools?
 
-Tools like **WireMock**, **MockServer**, **Postman Mock Server**, and **JSON Server** are excellent for simple request-response patterns. They're quick to set up and work well when each API call is independent. However, our mobile enrollment flows required something these tools couldn't easily provide:
+Tools like **WireMock**, **MockServer**, **Postman Mock Server**, and **JSON Server** are excellent for many API testing needs. **WireMock** in particular can model multi-step flows using stateful scenarios and [extensions](https://wiremock.org/docs/extending-wiremock/) when stubs alone are not enough.
+
+We evaluated that path. For our Workspace ONE enrollment flows, we still chose a dedicated **Spring Boot** mock because the hard part was not only sequencing responses, but co-locating **heavy server-side cryptography**, **shared in-memory state**, and **polymorphic handlers** in one codebase we could evolve quickly as contracts changed.
 
 **Stateful Operations Across Requests**: Consider a typical enrollment flow:
 1. **Check-in Request**: Device sends a certificate signing request
@@ -90,9 +79,9 @@ Tools like **WireMock**, **MockServer**, **Postman Mock Server**, and **JSON Ser
 3. **Secure Channel Request**: Device initiates encrypted communication
 4. **Server Response**: Mock retrieves the stored certificate to encrypt the response
 
-Data from request A must be captured, stored, and reused in request B. WireMock and similar tools are stateless by design—they can't natively extract data from one request and use it in subsequent responses without writing Java/JavaScript extensions, which defeats their simplicity.
+Data from request A must be captured, stored, and reused in request B. That is achievable with advanced WireMock usage; we preferred implementing it as ordinary Java services with clear seams for unit tests and debugger-friendly flow.
 
-**Complex Cryptographic Operations**: Our flows involve BouncyCastle operations (signing, encrypting, certificate chain validation) with platform-specific differences. Spring Boot gives us full control over these operations with clean, testable code.
+**Complex Cryptographic Operations**: Our flows involve BouncyCastle operations (signing, encrypting, certificate chain validation) with platform-specific differences—including **CMS-related signing** and **matching how the on-device SDK consumes certificate material across secure channel calls**. Spring Boot gives us full control over these operations with clean, testable code.
 
 **Polymorphic Platform Handling**: We needed the same endpoint to behave differently for iOS vs Android vs different enrollment modes, loading different configurations without code duplication.
 
@@ -249,7 +238,11 @@ Using a mock server creates a highly consistent testing environment, which allow
 
 ## Conclusion
 
-Mocking is a game-changer in mobile automation. It empowers developers to work independently, accelerates development cycles, simplifies configuration management, and provides deep insights into your app’s performance. By embracing mocking, you can unleash your mobile app’s full potential and deliver a smoother, more efficient development experience.
+Mocking is a game-changer in mobile automation. We move faster with more predictable signals: we can validate client behavior early, exercise edge cases deliberately, and keep performance measurements understandable because the backend is under our control.
+
+We lean on mock-backed automation most when a real environment would demand **heavy backend churn**—for example **IDP/SAML** and similar **platform-wide configuration changes**—and during **active development** when APIs and contracts are still evolving. Runs are also **more repeatable**, since we are not constantly fighting **shared-environment churn** and **network noise** while trying to judge whether a failure is truly in the app.
+
+By embracing mocking for those high-friction scenarios, we keep development and automation practical without pretending every real-world dependency is easy to reproduce on demand.
 
 ## Visual References & Attribution
 
