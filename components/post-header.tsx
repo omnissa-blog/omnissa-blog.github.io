@@ -16,9 +16,13 @@ export function PostHeader({ metadata }: PostHeaderProps) {
 
   return (
     <div className="mb-8">
-      <Badge variant="secondary" className="mb-4">
-        {metadata.categories[0]}
-      </Badge>
+      <div className="flex gap-2 mb-4">
+        {metadata.categories?.map((cat, idx) => (
+          <Badge key={cat + idx} variant="secondary">
+            {cat}
+          </Badge>
+        ))}
+      </div>
       <h1 className="font-serif text-4xl md:text-5xl font-bold mb-6 leading-tight">
         {metadata.title}
       </h1>
@@ -36,7 +40,7 @@ export function PostHeader({ metadata }: PostHeaderProps) {
           <span className="font-semibold">{authorDisplayName}</span>
         </div>
         <span className="text-sm text-gray-500">
-          {metadata.date && format(new Date(metadata.date), "PPP")}
+          {metadata.date && format(new Date(metadata.date + "T12:00:00"), "PPP")}
         </span>
       </div>
     </div>

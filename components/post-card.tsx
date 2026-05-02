@@ -87,7 +87,7 @@ export function PostCard({
 
   const DateInfo = ({ className }: { className?: string }) => (
     <span className={cn("text-sm text-gray-500", className)}>
-      {post.metadata.date && format(new Date(post.metadata.date), "PPP")}
+      {post.metadata.date && format(new Date(post.metadata.date + "T12:00:00"), "PPP")}
     </span>
   );
 

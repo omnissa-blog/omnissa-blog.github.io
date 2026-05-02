@@ -1,4 +1,5 @@
 import createMDX from '@next/mdx';
+import remarkGfm from 'remark-gfm';
 
 /** @type {import('next').NextConfig} */
 let nextConfig = {
@@ -12,6 +13,10 @@ let nextConfig = {
   images: { unoptimized: true },
 };
 
-const withMDX = createMDX({});
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [remarkGfm],
+  },
+});
 
 export default withMDX(nextConfig);

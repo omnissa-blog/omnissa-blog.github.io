@@ -68,4 +68,34 @@ export const AUTHORS: Record<string, Author> = {
     avatar: "/assets/images/avatar/wtian-avatar.webp",
     email: "wtian@omnissa.com",
   },
+  jbroch: {
+    name: "Josh Broch",
+    display_name: "Josh Broch",
+    avatar: "/assets/images/avatar/jbroch-avatar.jpg",
+    email: "jbroch@omnissa.com",
+  },
+  ghichborn: {
+    name: "Geoffrey Hichborn",
+    display_name: "Geoffrey Hichborn",
+    avatar: "/assets/images/avatar/ghichborn-avatar.png",
+    email: "ghichborn@omnissa.com",
+  },
+  kyankov: {
+    name: "Kris Yankov",
+    display_name: "Kris Yankov",
+    avatar: "/assets/images/avatar/kyankov-avatar.webp",
+    email: "kyankov@omnissa.com",
+  },
+  svudutala: {
+    name: "Sai Kiran Vudutala",
+    display_name: "Sai Kiran Vudutala",
+    avatar: "/assets/images/avatar/svudutala-avatar.png",
+    email: "svudutala@omnissa.com",
+  },
+  nkini: {
+    name: "Nagendra Kini",
+    display_name: "Nagendra Kini",
+    avatar: "/assets/images/avatar/nkini-avatar.png",
+    email: "nkini@omnissa.com",
+  }
 };
