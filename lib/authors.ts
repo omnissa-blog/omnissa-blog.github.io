@@ -50,6 +50,12 @@ export const AUTHORS: Record<string, Author> = {
     twitter: "https://twitter.com/wowthemesnet",
     description: "This is the author box. Write a short description of the author here.",
   },
+  cbalabhadrapat: {
+    name: "Chandrakanth Balabhadrapatruni",
+    display_name: "Chandrakanth Balabhadrapatruni",
+    avatar: "/assets/images/avatar/cbalabhadrapat-avatar.png",
+    email: "cbalabhadrapat@omnissa.com",
+  },
   kartikkumarp: {
     name: "Kartik Patel",
     display_name: "Kartik Patel",
