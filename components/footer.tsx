@@ -45,7 +45,7 @@ const FOOTER_SECTIONS = [
   {
     title: "Resources",
     links: [
-      { text: "Blog", href: "https://www.omnissa.com/insights/#Blog" },
+      { text: "Blog", href: "https://www.omnissa.com/insights/blog/" },
       { text: "Partners", href: "https://www.omnissa.com/partners/" },
       {
         text: "Security response",
@@ -54,13 +54,17 @@ const FOOTER_SECTIONS = [
       { text: "Trust center", href: "https://www.omnissa.com/trust-center/" },
       { text: "User portal", href: "https://www.omnissa.com/user-portal/" },
       { text: "Glossary", href: "https://www.omnissa.com/glossary/" },
+      {
+        text: "Data rights request",
+        href: "https://omnissaprivacy.my.onetrust.com/webform/9f732b78-2fda-4e86-9272-87a4ece0fa88/afa58b4f-5745-4f80-ada0-ba54a32395a3",
+      },
     ],
   },
   {
     title: "Company",
     links: [
       { text: "About", href: "https://www.omnissa.com/about-us/" },
-      { text: "News", href: "https://www.omnissa.com/insights/#News" },
+      { text: "News", href: "https://www.omnissa.com/insights/news/" },
       { text: "Careers", href: "https://www.omnissa.com/careers/" },
       { text: "Contact us", href: "https://www.omnissa.com/contact-us/" },
     ],
@@ -81,7 +85,7 @@ const LEGAL_LINKS = [
 ];
 
 const COMPANY_INFO = {
-  name: "© 2025 Omnissa, LLC",
+  name: "© 2026 Omnissa, LLC",
   address: ["590 E Middlefield Road,", "Mountain View CA 94043"],
   rights: "All Rights Reserved.",
 };
