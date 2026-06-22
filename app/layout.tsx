@@ -1,10 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import {
-  Outfit,
-  Playfair_Display,
-  Source_Code_Pro
-} from "next/font/google";
+import { GoogleTagManager } from "@next/third-parties/google";
+import { Outfit, Playfair_Display, Source_Code_Pro } from "next/font/google";
 import { Header } from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import Footer from "@/components/footer";
@@ -47,6 +44,7 @@ export default function RootLayout({
           {children}
           <Footer />
         </ThemeProvider>
+        <GoogleTagManager gtmId="GTM-M2HB5PH8" />
       </body>
     </html>
   );
